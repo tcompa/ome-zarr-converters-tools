@@ -96,6 +96,7 @@ class TiledImage:
         path_builder: PathBuilder,
         channel_names: list[str] | None = None,
         wavelength_ids: list[str] | None = None,
+        channel_colors: list[str] | None = None,
         attributes: dict[str, str] | None = None,
     ):
         """Initialize the tiled image.
@@ -112,6 +113,7 @@ class TiledImage:
                 post the tiled image in a plate/{row}/{column}/{acquisition_id} path.
             channel_names (list[str] | None): The channel names of the tiled image.
             wavelength_ids (list[str] | None): The wavelength ids of the tiled image.
+            channel_colors (list[str] | None): The channel colors of the tiled image.
             attributes (dict[str, str] | None): The attributes of the tiled image.
 
         """
@@ -121,6 +123,7 @@ class TiledImage:
 
         self._channel_names = channel_names
         self._wavelength_ids = wavelength_ids
+        self._channel_colors = channel_colors
         self._attributes = attributes
 
     def __repr__(self) -> str:
@@ -155,6 +158,11 @@ class TiledImage:
     def wavelength_ids(self) -> list[str] | None:
         """Return the wavelength ids."""
         return self._wavelength_ids
+
+    @property
+    def channel_colors(self) -> list[str] | None:
+        """Return the channel colors."""
+        return self._channel_colors
 
     @property
     def attributes(self) -> dict[str, str]:
