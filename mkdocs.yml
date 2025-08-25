@@ -1,8 +1,8 @@
-site_name: "Fractal Converters Tools"
-site_url: "https://github.com/fractal-analytics-platform/fractal-converters-tools"
+site_name: "OME-Zarr Converters Tools"
+site_url: "https://github.com/BioVisionCenter/ome-zarr-converters-tools"
 site_description: "A Python library for building OME-Zarr converters."
-repo_name: "fractal-converters-tools"
-repo_url: "https://github.com/fractal-analytics-platform/fractal-converters-tools"
+repo_name: "ome-zarr-converters-tools"
+repo_url: "https://github.com/BioVisionCenter/ome-zarr-converters-tools"
 copyright: "Copyright &copy; 2025-, BioVisionCenter UZH"
 
 theme:
@@ -45,8 +45,8 @@ extra:
     provider: mike
   social:
     - icon: fontawesome/brands/github
-      link: "https://github.com/fractal-analytics-platform/fractal-converters-tools"
-      name: Fractal Converters Tools on GitHub
+      link: "https://github.com/BioVisionCenter/ome-zarr-converters-tools"
+      name: OME-Zarr Converters Tools on GitHub
 
 plugins: 
   - search
@@ -70,7 +70,7 @@ plugins:
   - git-revision-date-localized:
       enable_creation_date: true
   - git-committers:
-      repository: fractal-analytics-platform/fractal-converters-tools
+      repository: BioVisionCenter/ome-zarr-converters-tools
       branch: main
   - mkdocs-jupyter:
       execute: true
@@ -88,6 +88,6 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 
 nav:
-  - "Fractal Converters Tools": index.md
+  - "OME-Zarr Converters Tools": index.md
   - "Tutorials": tutorial.ipynb
   - "API Reference": api.md
