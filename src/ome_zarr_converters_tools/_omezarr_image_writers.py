@@ -140,7 +140,7 @@ def write_tiles_as_rois(ome_zarr_container: OmeZarrContainer, tiles: list[Tile])
         )
         roi = roi_pix.to_roi(pixel_size=pixel_size)
         _fov_rois.append(roi)
-        image.set_roi(roi=roi_pix, patch=tile_data) # type: ignore
+        image.set_roi(roi=roi_pix, patch=tile_data)  # type: ignore
 
     # Set order to 0 if the image has the time axis
     order = "linear" if squeeze_t else "nearest"
