@@ -109,13 +109,14 @@ def check_if_regular_grid(tiles: list[Tile]) -> tuple[str | None, GridSetup]:
     # ------------------------------------------
     # Test 3: Check the edge case where the grid is slanted
     # ------------------------------------------
-    for tile in tiles[1:]:
-        vec = tile.top_l - tiles[0].top_l
-        if vec.x < 1e-6 or vec.y < 1e-6:
-            # All good the grid is not slanted
-            break
-    else:
-        return "The grid is slanted", GridSetup()
+    if len(tiles) > 2:
+        for tile in tiles[1:]:
+            vec = tile.top_l - tiles[0].top_l
+            if vec.x < 1e-6 or vec.y < 1e-6:
+                # All good the grid is not slanted
+                break
+        else:
+            return "The grid is slanted", GridSetup()
 
     # Return the grid setup
     num_x, num_y = _find_grid_size(tiles, offset_x, offset_y)
