@@ -127,8 +127,7 @@ def write_tiles_as_rois(ome_zarr_container: OmeZarrContainer, tiles: list[Tile])
         # Load the whole tile and set the data in the image
         tile_data = tile.load()
         _, _, s_z, s_y, s_x = tile_data.shape
-
-        tile_data = tile_data[0] if squeeze_t else tile_data
+        tile_data = tile_data[0, ...] if squeeze_t else tile_data
         roi_pix = RoiPixels(
             name=f"FOV_{i}",
             x=int(tile.top_l.x),
@@ -141,10 +140,10 @@ def write_tiles_as_rois(ome_zarr_container: OmeZarrContainer, tiles: list[Tile])
         )
         roi = roi_pix.to_roi(pixel_size=pixel_size)
         _fov_rois.append(roi)
-        image.set_roi(roi=roi, patch=tile_data)
+        image.set_roi(roi=roi_pix, patch=tile_data) # type: ignore
 
     # Set order to 0 if the image has the time axis
-    order = 1 if squeeze_t else 0
+    order = "linear" if squeeze_t else "nearest"
     image.consolidate(order=order)
     ome_zarr_container.set_channel_percentiles(start_percentile=1, end_percentile=99.9)
     table = RoiTable(rois=_fov_rois)
