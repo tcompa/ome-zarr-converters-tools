@@ -162,10 +162,14 @@ class Tile(BaseModel):
 
 
 def build_tiles(
-    data: dict[str, Any], full_context: FullContextConverterOptions
+    data: dict[str, Any],
+    full_context: FullContextConverterOptions,
+    base_dir: str | None = None,
 ) -> Tile:
     data = build_collection(data)
-    data = build_default_image_loader(data, context=full_context.acquisition_details)
+    data = build_default_image_loader(
+        data, data_type=full_context.acquisition_details.data_type, base_dir=base_dir
+    )
     return Tile.model_validate(
         data,
         context=full_context,

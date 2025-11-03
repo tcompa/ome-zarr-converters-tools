@@ -1,0 +1,34 @@
+# Coordinate space definitions (Optional)
+# Sometimes it might be useful to define the coordinate space of the acquisition differently
+# for the start positions and the lengths. For example, the start positions might be given
+# in world coordinates (micrometers), while the lengths are given in pixel coordinates.
+# This can be specified here.
+# Implicit casting rules:
+# - all start_* fields default to "world" if not specified
+# - all length_* fields default to "pixel" if not specified
+# start_c and length_c are always in pixel coordinates
+# and do not need to be specified here.
+[coordinate_space]
+start_x = "world"  # can either be "world" or "pixel"
+start_y = "world"  # can either be "world" or "pixel"
+start_z = "world"  # can either be "world" or "pixel"
+start_t = "pixel"  # can either be "world" or "pixel"
+length_x = "pixel" # can either be "world" or "pixel"   
+length_y = "pixel" # can either be "world" or "pixel"
+length_z = "world" # can either be "world" or "pixel"
+length_t = "pixel" # can either be "world" or "pixel"
+
+# Some of the acquisition details can be either specified here or in the regions table.
+# If specified in both places, the regions table takes precedence.
+# Pixel size in micrometers (Optional)
+pixelsize = 0.65
+# Z spacing in micrometers (Optional)
+z_spacing = 5.0
+# T spacing in seconds (Optional)
+t_spacing = 1.0
+# Channel names (Optional)
+channel_names = ["DAPI"]
+# Wavelengths (Optional)
+wavelengths = ["405"]
+# Axes (Optional, default: "czyx" or "tczyx" depending on whether timepoints are present)
+axes = ["c", "z", "y", "x"]

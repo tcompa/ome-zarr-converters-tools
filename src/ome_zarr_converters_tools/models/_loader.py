@@ -2,14 +2,15 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import tifffile
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from ome_zarr_converters_tools.models._acquisition import AcquisitionDetails
+if TYPE_CHECKING:
+    from ome_zarr_converters_tools.models._acquisition import AcquisitionDetails
 
 
 class ImageLoaderInterface(BaseModel, ABC):
@@ -46,32 +47,43 @@ class ImageLoaderInterface(BaseModel, ABC):
 
 
 class DefaultImageLoader(ImageLoaderInterface):
-    file_path: str
+    file_name: str
+    base_dir: str | None = None
 
     def load_data(self, resource: Any = None) -> np.ndarray:
         """Load the image data as a NumPy array."""
-        path = Path(self.file_path)
+        if self.base_dir is not None:
+            path = Path(self.base_dir) / "data" / self.file_name
+        else:
+            path = Path(self.file_name)
         if not path.exists():
-            raise FileNotFoundError(f"File not found: {self.file_path}")
+            raise FileNotFoundError(f"File not found: {path}")
 
         if path.suffix.lower() in [".tiff", ".tif"]:
-            with tifffile.TiffFile(self.file_path) as tif:
+            with tifffile.TiffFile(path) as tif:
                 image = tif.asarray()
         elif path.suffix.lower() in [".png", ".jpg", ".jpeg", ".bmp"]:
-            image = np.array(Image.open(self.file_path))
+            image = np.array(Image.open(path))
 
         elif path.suffix.lower() == ".npy":
-            image = np.load(self.file_path)
+            image = np.load(path)
         else:
             raise ValueError(f"Unsupported file format: {path.suffix}")
         return image
 
 
 def build_default_image_loader(
-    data: dict[str, Any], context: AcquisitionDetails, key_name: str = "image_loader"
+    data: dict[str, Any],
+    data_type: str | None = None,
+    base_dir: str | None = None,
+    key_name: str = "image_loader",
 ) -> dict[str, Any]:
     """Create a DefaultImageLoader from a dictionary."""
-    data_loader = DefaultImageLoader.model_validate(data, context=context)
+    if "data_type" not in data:
+        data["data_type"] = data_type
+    if base_dir is not None:
+        data["base_dir"] = base_dir
+    data_loader = DefaultImageLoader(**data)
     data = {k: v for k, v in data.items() if k not in DefaultImageLoader.model_fields}
     data[key_name] = data_loader
     return data
