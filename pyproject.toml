@@ -33,7 +33,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 # add your package dependencies here
-dependencies = ["ngio>=0.4.2", "tqdm", "numpy", "zarr", "pillow"]
+dependencies = ["ngio>=0.4.2", "tqdm", "numpy", "zarr", "pillow", "tifffile"]
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 # "extras" (e.g. for `pip install .[test]`)

@@ -1,9 +1,12 @@
 """Models for defining regions to be converted into OME-Zarr format."""
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
 import numpy as np
+import tifffile
+from PIL import Image
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from ome_zarr_converters_tools.models._acquisition import AcquisitionDetails
@@ -46,7 +49,22 @@ class DefaultImageLoader(ImageLoaderInterface):
     file_path: str
 
     def load_data(self, resource: Any = None) -> np.ndarray:
-        raise NotImplementedError("Data loading not implemented yet.")
+        """Load the image data as a NumPy array."""
+        path = Path(self.file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {self.file_path}")
+
+        if path.suffix.lower() in [".tiff", ".tif"]:
+            with tifffile.TiffFile(self.file_path) as tif:
+                image = tif.asarray()
+        elif path.suffix.lower() in [".png", ".jpg", ".jpeg", ".bmp"]:
+            image = np.array(Image.open(self.file_path))
+
+        elif path.suffix.lower() == ".npy":
+            image = np.load(self.file_path)
+        else:
+            raise ValueError(f"Unsupported file format: {path.suffix}")
+        return image
 
 
 def build_default_image_loader(
