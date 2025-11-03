@@ -1,6 +1,6 @@
 import pytest
 
-from ome_zarr_converters_tools._microplate_utils import (
+from ome_zarr_converters_tools.v1._microplate_utils import (
     wellid_to_row_column,
 )
 

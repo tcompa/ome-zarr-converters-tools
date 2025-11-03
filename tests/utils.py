@@ -1,8 +1,8 @@
 import numpy as np
 from ngio import PixelSize
 
-from ome_zarr_converters_tools._tile import Point, Tile, Vector
-from ome_zarr_converters_tools._tiled_image import PlatePathBuilder, TiledImage
+from ome_zarr_converters_tools.v1._tile import Point, Tile, Vector
+from ome_zarr_converters_tools.v1._tiled_image import PlatePathBuilder, TiledImage
 
 
 class DummyLoader:

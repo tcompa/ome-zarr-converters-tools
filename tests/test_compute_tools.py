@@ -4,15 +4,15 @@ import pytest
 from ngio.utils import NgioFileExistsError
 from utils import generate_tiled_image
 
-from ome_zarr_converters_tools._pkl_utils import remove_pkl
-from ome_zarr_converters_tools._task_common_models import (
+from ome_zarr_converters_tools.v1._pkl_utils import remove_pkl
+from ome_zarr_converters_tools.v1._task_common_models import (
     AdvancedComputeOptions,
     ConvertParallelInitArgs,
 )
-from ome_zarr_converters_tools._task_compute_tools import (
+from ome_zarr_converters_tools.v1._task_compute_tools import (
     generic_compute_task,
 )
-from ome_zarr_converters_tools._task_init_tools import build_parallelization_list
+from ome_zarr_converters_tools.v1._task_init_tools import build_parallelization_list
 
 
 def test_compute(tmp_path):

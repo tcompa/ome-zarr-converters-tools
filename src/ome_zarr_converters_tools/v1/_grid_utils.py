@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ome_zarr_converters_tools._tile import Tile
+from ome_zarr_converters_tools.v1._tile import Tile
 
 
 def __first_if_allclose(values: list[float]) -> tuple[bool, float]:

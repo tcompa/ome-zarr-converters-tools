@@ -4,11 +4,11 @@ import logging
 from functools import partial
 from pathlib import Path
 
-from ome_zarr_converters_tools._omezarr_image_writers import write_tiled_image
-from ome_zarr_converters_tools._pkl_utils import load_tiled_image, remove_pkl
-from ome_zarr_converters_tools._stitching import standard_stitching_pipe
-from ome_zarr_converters_tools._task_common_models import ConvertParallelInitArgs
-from ome_zarr_converters_tools._tiled_image import PlatePathBuilder
+from ome_zarr_converters_tools.v1._omezarr_image_writers import write_tiled_image
+from ome_zarr_converters_tools.v1._pkl_utils import load_tiled_image, remove_pkl
+from ome_zarr_converters_tools.v1._stitching import standard_stitching_pipe
+from ome_zarr_converters_tools.v1._task_common_models import ConvertParallelInitArgs
+from ome_zarr_converters_tools.v1._tiled_image import PlatePathBuilder
 
 logger = logging.getLogger(__name__)
 

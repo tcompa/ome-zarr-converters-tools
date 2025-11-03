@@ -4,7 +4,7 @@ from typing import Protocol
 
 from ngio import PixelSize
 
-from ome_zarr_converters_tools._tile import Tile
+from ome_zarr_converters_tools.v1._tile import Tile
 
 
 class PathBuilder(Protocol):
