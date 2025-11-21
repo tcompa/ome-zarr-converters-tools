@@ -63,6 +63,7 @@ def init_empty_ome_zarr_image(
     pixel_size: PixelSize,
     channel_names: list[str] | None,
     wavelength_ids: list[str] | None,
+    channel_colors: list[str] | None,
     num_levels: int = 5,
     max_xy_chunk: int = 4096,
     z_chunk: int = 10,
@@ -108,6 +109,7 @@ def init_empty_ome_zarr_image(
         time_spacing=pixel_size.t,
         channel_labels=channel_names,
         channel_wavelengths=wavelength_ids,
+        channel_colors=channel_colors,
         overwrite=overwrite,
         levels=num_levels,
     )
@@ -178,6 +180,7 @@ def write_tiled_image(
         pixel_size=pixel_size,
         channel_names=tiled_image.channel_names,
         wavelength_ids=tiled_image.wavelength_ids,
+        channel_colors=tiled_image.channel_colors,
         num_levels=num_levels,
         max_xy_chunk=max_xy_chunk,
         z_chunk=z_chunk,
