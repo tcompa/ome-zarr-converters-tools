@@ -2,7 +2,13 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    DirectoryPath,
+    Field,
+    field_validator,
+)
 
 CANONICAL_AXES_TYPE = Literal["t", "c", "z", "y", "x"]
 canonical_axes: list[CANONICAL_AXES_TYPE] = ["t", "c", "z", "y", "x"]
@@ -10,29 +16,48 @@ COO_TYPE = Literal["world", "pixel"]
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
-class CoordinateSystem(BaseModel):
-    start_x: COO_TYPE = "world"
-    start_y: COO_TYPE = "world"
-    start_z: COO_TYPE = "world"
-    start_t: COO_TYPE = "world"
-    length_x: COO_TYPE = "pixel"
-    length_y: COO_TYPE = "pixel"
-    length_z: COO_TYPE = "pixel"
-    length_t: COO_TYPE = "pixel"
-
-
 class AcquisitionDetails(BaseModel):
-    coo_system: CoordinateSystem = Field(default_factory=CoordinateSystem)
-    pixelsize: float = 1.0  # in micrometers
-    z_spacing: float = 1.0  # in micrometers
-    t_spacing: float = 1.0  # in micrometers
+    """Details about the acquisition.
+
+    These can be either provided by the user or inferred from the data.
+    """
+
+    # Determine the coordinate system for start and length values
+    start_x_coo: COO_TYPE = "world"
+    start_y_coo: COO_TYPE = "world"
+    start_z_coo: COO_TYPE = "world"
+    start_t_coo: COO_TYPE = "world"
+    length_x_coo: COO_TYPE = "pixel"
+    length_y_coo: COO_TYPE = "pixel"
+    length_z_coo: COO_TYPE = "pixel"
+    length_t_coo: COO_TYPE = "pixel"
+    # Spacing information
+    pixelsize: float = Field(default=1.0, gt=0.0)  # in micrometers
+    z_spacing: float = Field(default=1.0, gt=0.0)  # in micrometers
+    t_spacing: float = Field(default=1.0, gt=0.0)  # in micrometers
+
+    # Channel information
     channel_names: list[str] | None = None
     wavelengths: list[float] | None = None
+
+    # Axes order to be used for the data (should be a subset of canonical axes)
     axes: list[CANONICAL_AXES_TYPE] = Field(
         default_factory=lambda: canonical_axes.copy(), min_length=2, max_length=5
     )
+
+    # Data type of the image data (if known)
     data_type: str | None = None
+
     model_config = ConfigDict(extra="forbid")
+
+    @classmethod
+    @field_validator("axes")
+    def validate_axes(cls, v: list[CANONICAL_AXES_TYPE]) -> list[CANONICAL_AXES_TYPE]:
+        """Validate that axes are in canonical order."""
+        for i in range(1, len(v)):
+            if canonical_axes.index(v[i]) <= canonical_axes.index(v[i - 1]):
+                raise ValueError("Axes must be in canonical order: t, c, z, y, x")
+        return v
 
 
 class StageCorrections(BaseModel):
@@ -49,7 +74,7 @@ class AlignmentCorrections(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class ImageOptions(BaseModel):
+class OmeZarrOptions(BaseModel):
     num_levels: int = Field(default=5, ge=1)
     max_xy_chunk: int = Field(default=4096, ge=1)
     z_chunk: int = Field(default=10, ge=1)
@@ -64,14 +89,22 @@ class ConverterOptions(BaseModel):
     alignment_correction: AlignmentCorrections = Field(
         default_factory=AlignmentCorrections
     )
-    image_options: ImageOptions = Field(default_factory=ImageOptions)
+    omezarr_options: OmeZarrOptions = Field(default_factory=OmeZarrOptions)
     model_config = ConfigDict(extra="forbid")
 
-    def split_tiles(self) -> bool:
-        return self.tiling_mode == "none"
+
+class FullContextBaseModel(BaseModel):
+    """Base model for context information during conversion."""
+
+    acquisition_details: AcquisitionDetails
+    converter_options: ConverterOptions
+    model_config = ConfigDict(extra="forbid")
 
 
-class FullContextConverterOptions(BaseModel):
-    acquisition_details: AcquisitionDetails = Field(default_factory=AcquisitionDetails)
-    converter_options: ConverterOptions = Field(default_factory=ConverterOptions)
+class HCSFromTableContext(FullContextBaseModel):
+    """Context model for HCS data from a table."""
+
+    acquisition_path: DirectoryPath
+    plate_name: str = "plate"
+    acquisition: int = Field(default=0, ge=0)
     model_config = ConfigDict(extra="forbid")

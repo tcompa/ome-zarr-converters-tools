@@ -1,49 +1,53 @@
 """Models for defining regions to be converted into OME-Zarr format."""
 
-from typing import Literal, Self
+from typing import Any, Generic, Literal, Self
 
-from ngio import PixelSize
+import numpy as np
+from ngio import PixelSize, Roi
 from pydantic import BaseModel, ConfigDict, Field
 
-from ome_zarr_converters_tools.models._collection import (
-    CollectionInterface,
-)
+from ome_zarr_converters_tools.models._collection import CollectionInterfaceType
 from ome_zarr_converters_tools.models._loader import (
-    ImageLoaderInterface,
+    ImageLoaderInterfaceType,
 )
-from ome_zarr_converters_tools.models._roi_v2 import RoiV2
-from ome_zarr_converters_tools.models._tile import Tile
+from ome_zarr_converters_tools.models._tile import BaseTile
 
 CANONICAL_AXES_TYPE = Literal["t", "c", "z", "y", "x"]
-canonical_axes: list[CANONICAL_AXES_TYPE] = ["t", "c", "z", "y", "x"]
 COO_TYPE = Literal["world", "pixel"]
-ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
-class TileRegion(BaseModel):
+class TileRegion(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfaceType]):
     # Region
-    roi: RoiV2
+    roi: Roi
     # Collection model defining how to build the path to the image(s)
-    collection: CollectionInterface
+    # collection: CollectionInterfaceType
     # Image loader
-    image_loader: ImageLoaderInterface
+    image_loader: ImageLoaderInterfaceType
     model_config = ConfigDict(extra="forbid")
 
     @classmethod
-    def from_tile(cls, tile: Tile) -> Self:
+    def from_tile(cls, tile: BaseTile) -> Self:
         """Create a TileRegion from a Tile."""
         return cls(
             roi=tile.to_roi(),
-            collection=tile.collection,
+            # collection=tile.collection,
             image_loader=tile.image_loader,
         )
 
+    def load_data(self, resource: Any) -> np.ndarray:
+        """Load the image data for this TileRegion using the image loader."""
+        return self.image_loader.load_data(resource=resource)
 
-class TiledImage(BaseModel):
-    regions: list[TileRegion] = Field(default_factory=list)
+
+class TiledImage(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfaceType]):
+    regions: list[TileRegion[CollectionInterfaceType, ImageLoaderInterfaceType]] = (
+        Field(default_factory=list)
+    )
+    path: str
     pixelsize: float = 1.0
     z_spacing: float = 1.0
     t_spacing: float = 1.0
+    data_type: str
     channel_names: list[str] | None = None
     wavelengths: list[float] | None = None
     axes: list[CANONICAL_AXES_TYPE]
@@ -71,7 +75,7 @@ class TiledImage(BaseModel):
             t=self.t_spacing,
         )
 
-    def add_tile(self, tile: Tile) -> None:
+    def add_tile(self, tile: BaseTile) -> None:
         """Add a Tile to the TiledImage as a TileRegion."""
         if self.channel_names != tile.channel_names:
             raise ValueError(
@@ -89,35 +93,3 @@ class TiledImage(BaseModel):
             raise ValueError("Tile t_spacing does not match TiledImage t_spacing.")
         tile_region = TileRegion.from_tile(tile)
         self.regions.append(tile_region)
-
-
-def build_tiled_images(
-    tiles: list[Tile], split_tiles: bool = False
-) -> list[TiledImage]:
-    """Create a TiledImage from a dictionary.
-
-    Args:
-        tiles: List of Tile models to build the TiledImage from.
-        split_tiles: If True, each field of view will be in its own TiledImage.
-            otherwise, all tiles will be combined into a single TiledImage.
-
-    Returns:
-        A TiledImage model.
-
-    """
-    tiled_images = {}
-    for tile in tiles:
-        suffix = "" if not split_tiles else f"_{tile.fov_name}"
-        path = tile.collection.path(suffix=suffix)
-        if path not in tiled_images:
-            tiled_images[path] = TiledImage(
-                regions=[],
-                channel_names=tile.channel_names,
-                wavelengths=tile.wavelengths,
-                pixelsize=tile.pixelsize,
-                z_spacing=tile.z_spacing,
-                t_spacing=tile.t_spacing,
-                axes=tile.axes,
-            )
-        tiled_images[path].add_tile(tile)
-    return list(tiled_images.values())

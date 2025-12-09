@@ -2,13 +2,10 @@
 
 from ome_zarr_converters_tools.models._acquisition import (
     AcquisitionDetails,
-    CoordinateSystem,
 )
-from ome_zarr_converters_tools.models._tile import Tile, build_tiles
+from ome_zarr_converters_tools.models._tile import BaseTile
 
 __all__ = [
     "AcquisitionDetails",
-    "CoordinateSystem",
-    "Tile",
-    "build_tiles",
+    "BaseTile",
 ]

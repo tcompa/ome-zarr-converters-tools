@@ -1,33 +1,22 @@
 """Models for defining regions to be converted into OME-Zarr format."""
 
-from typing import Any, Literal
+from typing import Any, Generic, Literal
 
+from ngio.common._roi import Roi, RoiSlice, pixel_to_world, world_to_pixel
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ome_zarr_converters_tools.models._acquisition import (
     AcquisitionDetails,
-    CoordinateSystem,
-    FullContextConverterOptions,
 )
 from ome_zarr_converters_tools.models._collection import (
-    CollectionInterface,
-    build_collection,
+    CollectionInterfaceType,
 )
 from ome_zarr_converters_tools.models._loader import (
-    ImageLoaderInterface,
-    build_default_image_loader,
-)
-from ome_zarr_converters_tools.models._roi_v2 import (
-    RoiSlice,
-    RoiV2,
-    pixel_to_world,
-    world_to_pixel,
+    ImageLoaderInterfaceType,
 )
 
 CANONICAL_AXES_TYPE = Literal["t", "c", "z", "y", "x"]
-canonical_axes: list[CANONICAL_AXES_TYPE] = ["t", "c", "z", "y", "x"]
 COO_TYPE = Literal["world", "pixel"]
-ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 def safe_to_world(
@@ -56,7 +45,7 @@ def safe_to_world(
     return world_coord
 
 
-class Tile(BaseModel):
+class BaseTile(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfaceType]):
     fov_name: str
     # Positions
     start_x: float
@@ -64,28 +53,44 @@ class Tile(BaseModel):
     start_z: float = 0.0
     start_c: int = 0
     start_t: float = 0.0
+
     # Sizes
     length_x: float = Field(gt=0)
     length_y: float = Field(gt=0)
     length_z: float = Field(default=1.0, gt=0)
     length_c: int = Field(default=1, gt=0)
     length_t: float = Field(default=1.0, gt=0)
+
     # Collection model defining how to build the path to the image(s)
-    collection: CollectionInterface
+    collection: CollectionInterfaceType
     # Image loader
-    image_loader: ImageLoaderInterface
+    image_loader: ImageLoaderInterfaceType
 
     # Additional acquisition details
     # This if not provided, will be filled from context
-    pixelsize: float = 1.0  # in micrometers
-    z_spacing: float = 1.0  # in micrometers
-    t_spacing: float = 1.0  # in micrometers
-    channel_names: list[str] | None = None
-    wavelengths: list[float] | None = None
+    # Coordinate system for start and length values
+    start_x_coo: COO_TYPE
+    start_y_coo: COO_TYPE
+    start_z_coo: COO_TYPE
+    start_t_coo: COO_TYPE
+    length_x_coo: COO_TYPE
+    length_y_coo: COO_TYPE
+    length_z_coo: COO_TYPE
+    length_t_coo: COO_TYPE
+
+    pixelsize: float
+    z_spacing: float
+    t_spacing: float
+    channel_names: list[str]
+    wavelengths: list[float]
     axes: list[CANONICAL_AXES_TYPE]
-    coo_system: CoordinateSystem
-    # Full context
-    full_context: FullContextConverterOptions
+
+    # Context from the converter options
+    # Stage corrections
+    flip_x: bool
+    flip_y: bool
+    swap_xy: bool
+
     model_config = ConfigDict(extra="allow")
 
     @field_validator("channel_names", "wavelengths", mode="before")
@@ -96,81 +101,64 @@ class Tile(BaseModel):
 
     @model_validator(mode="before")
     def fill_from_context(cls, data: dict[str, Any], info: Any) -> dict[str, Any]:
-        if not isinstance(data, dict):
-            return data
+        """Fill missing fields from context acquisition details."""
         if info.context is None:
             return data
 
         acq_details: AcquisitionDetails = info.context.acquisition_details
         acq_fields = AcquisitionDetails.model_fields.keys()
-        self_fields = Tile.model_fields.keys()
+        self_fields = BaseTile.model_fields.keys()
         for field in acq_fields:
             if field in self_fields and field not in data:
                 data[field] = getattr(acq_details, field)
 
-        if "full_context" not in data:
-            data["full_context"] = info.context
+        stage_corrections = info.context.converter_options.stage_correction
+        if "flip_x" not in data:
+            data["flip_x"] = stage_corrections.flip_x
+        if "flip_y" not in data:
+            data["flip_y"] = stage_corrections.flip_y
+        if "swap_xy" not in data:
+            data["swap_xy"] = stage_corrections.swap_xy
         return data
 
-    def to_roi(self) -> RoiV2:
-        """Convert the Tile to a RoiV2."""
+    def to_roi(self) -> Roi:
+        """Convert the Tile to a Roi."""
         spacing = {
             "x": self.pixelsize,
             "y": self.pixelsize,
             "z": self.z_spacing,
             "t": self.t_spacing,
         }
-        stage_correction = self.full_context.converter_options.stage_correction
+        origins = {}
         roi_slices = {}
         for ax in self.axes:
+            if ax == "x" and self.swap_xy:
+                ax = "y"
+            elif ax == "y" and self.swap_xy:
+                ax = "x"
+
             start_field = f"start_{ax}"
             start = getattr(self, start_field)
-            start_coo_system = getattr(self.coo_system, start_field, None)
+            start_coo_system = getattr(self, f"{start_field}_coo", None)
             if start_coo_system is not None:
                 start = safe_to_world(start, spacing[ax], start_coo_system)
 
-            if ax == "x" and stage_correction.flip_x:
+            if ax == "x" and self.flip_x:
                 start = -start
-            if ax == "y" and stage_correction.flip_y:
+            if ax == "y" and self.flip_y:
                 start = -start
 
             length_field = f"length_{ax}"
             length = getattr(self, length_field)
-            length_coo_system = getattr(self.coo_system, length_field, None)
+            length_coo_system = getattr(self, f"{length_field}_coo", None)
             if length_coo_system is not None:
                 length = safe_to_world(length, spacing[ax], length_coo_system)
             roi_slices[ax] = RoiSlice(start=start, length=length, axis_name=ax)
+            origins[f"{ax}_micrometer_original"] = start
 
-        if stage_correction.swap_xy:
-            y_slice = roi_slices["y"]
-            y_slice.axis_name = "x"
-            x_slice = roi_slices["x"]
-            x_slice.axis_name = "y"
-            roi_slices["x"] = y_slice
-            roi_slices["y"] = x_slice
-
-        origins = {}
-        for ax, roi_slice in roi_slices.items():
-            origins[f"{ax}_micrometer_original"] = roi_slice.start
-
-        return RoiV2(
+        return Roi(
             name=self.fov_name,
             slices=list(roi_slices.values()),
             space="world",
             **origins,
         )
-
-
-def build_tiles(
-    data: dict[str, Any],
-    full_context: FullContextConverterOptions,
-    base_dir: str | None = None,
-) -> Tile:
-    data = build_collection(data)
-    data = build_default_image_loader(
-        data, data_type=full_context.acquisition_details.data_type, base_dir=base_dir
-    )
-    return Tile.model_validate(
-        data,
-        context=full_context,
-    )
