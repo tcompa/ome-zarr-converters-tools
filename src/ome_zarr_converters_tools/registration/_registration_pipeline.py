@@ -2,8 +2,7 @@ from collections.abc import Callable
 from typing import Any, TypedDict
 
 from ome_zarr_converters_tools.models._tile_region import TiledImage
-from ome_zarr_converters_tools.utils._allignment import align_regions
-from ome_zarr_converters_tools.utils._tiling import tile_regions
+from ome_zarr_converters_tools.registration.func import align_regions, tile_regions
 
 
 class Step(TypedDict):

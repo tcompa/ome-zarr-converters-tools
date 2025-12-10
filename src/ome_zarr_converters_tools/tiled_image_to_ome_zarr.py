@@ -4,11 +4,8 @@ from typing import Any
 
 from ngio.utils._zarr_utils import NgioSupportedStore
 
-from ome_zarr_converters_tools.models._acquisition import (
-    OmeZarrOptions,
-)
-from ome_zarr_converters_tools.models._tile_region import TiledImage
-from ome_zarr_converters_tools.utils._registration_pipeline import (
+from ome_zarr_converters_tools.models import OmeZarrOptions, TiledImage
+from ome_zarr_converters_tools.registration import (
     Step,
     apply_registration_pipeline,
 )
