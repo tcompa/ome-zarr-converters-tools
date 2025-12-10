@@ -1,4 +1,4 @@
-"""Tooling to build ome-zarr HCS plate converters."""
+"""This tooling will be removed before v07 release."""
 
 from importlib.metadata import PackageNotFoundError, version
 
