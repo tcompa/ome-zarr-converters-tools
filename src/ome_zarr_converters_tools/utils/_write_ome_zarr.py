@@ -3,11 +3,18 @@ from typing import Any
 
 import zarr
 from ngio import PixelSize, RoiSlice, create_empty_ome_zarr
+from ngio.tables import RoiTable
 from ngio.utils._zarr_utils import NgioSupportedStore
 
 from ome_zarr_converters_tools.models._acquisition import OmeZarrOptions, canonical_axes
 from ome_zarr_converters_tools.models._tile_region import TiledImage, TileRegion
 from ome_zarr_converters_tools.utils._roi_utils import bulk_roi_union
+
+
+def _compute_fov_properties(
+    regions: list[TileRegion],
+) -> dict[str, Any]:
+    raise NotImplementedError("This function is not yet implemented.")
 
 
 def _compute_image_properties(
@@ -88,12 +95,11 @@ def write_tiled_image_as_zarr(
         ome_zarr_options: OmeZarrOptions model to use for writing.
         overwrite: Whether to overwrite existing Zarr files.
     """
-    regions = _region_to_pixel_coordinates(
+    tiled_image.regions = _region_to_pixel_coordinates(
         tiled_image.regions,
         tiled_image.pixel_size,
     )
-    image_properties = _compute_image_properties(regions, ome_zarr_options)
-
+    image_properties = _compute_image_properties(tiled_image.regions, ome_zarr_options)
     mode = "w" if overwrite else "w-"
     base_group = zarr.open_group(store=base_store, mode=mode, path=tiled_image.path)
     ome_zarr = create_empty_ome_zarr(
@@ -106,8 +112,19 @@ def write_tiled_image_as_zarr(
         **image_properties,
     )
     image = ome_zarr.get_image()
-    for region in regions:
+    for region in tiled_image.regions:
         region_data = region.load_data(resource)
         region_data = region_data[None, None, None, ...]
         image.set_roi(roi=region.roi, patch=region_data)
+
+    rois = []
+    for key, regions in tiled_image.group_by_fov().items():
+        roi_union = bulk_roi_union([region.roi for region in regions])
+        roi_union.name = key
+        rois.append(roi_union.to_world(pixel_size=tiled_image.pixel_size))
+    roi_table = RoiTable(rois=rois)
+    ome_zarr.add_table("FOV_ROI_table", roi_table, backend="csv")
+
+    well_roi = ome_zarr.build_image_roi_table()
+    ome_zarr.add_table("well_ROI_table", well_roi, backend="csv")
     return {}

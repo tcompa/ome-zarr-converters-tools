@@ -154,7 +154,8 @@ class BaseTile(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfaceT
             if length_coo_system is not None:
                 length = safe_to_world(length, spacing[ax], length_coo_system)
             roi_slices[ax] = RoiSlice(start=start, length=length, axis_name=ax)
-            origins[f"{ax}_micrometer_original"] = start
+            if ax in ["x", "y", "z"]:
+                origins[f"{ax}_micrometer_original"] = start
 
         return Roi(
             name=self.fov_name,
@@ -162,3 +163,37 @@ class BaseTile(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfaceT
             space="world",
             **origins,
         )
+
+
+class Tile(BaseTile[CollectionInterfaceType, ImageLoaderInterfaceType]):
+    """Model defining a Tile to be converted into OME-Zarr format.
+
+    This model is a simplified version of BaseTile without explicit
+    context-dependent fields.
+
+    This model require to know the acquisition context to be built correctly.
+
+    Example:
+        >>> from ome_zarr_converters_tools.models import Tile
+        >>> tile = Tile.model_validate(data, context=context)
+    """
+
+    fov_name: str
+    # Positions
+    start_x: float
+    start_y: float
+    start_z: float = 0.0
+    start_c: int = 0
+    start_t: float = 0.0
+
+    # Sizes
+    length_x: float = Field(gt=0)
+    length_y: float = Field(gt=0)
+    length_z: float = Field(default=1.0, gt=0)
+    length_c: int = Field(default=1, gt=0)
+    length_t: float = Field(default=1.0, gt=0)
+
+    # Collection model defining how to build the path to the image(s)
+    collection: CollectionInterfaceType
+    # Image loader
+    image_loader: ImageLoaderInterfaceType

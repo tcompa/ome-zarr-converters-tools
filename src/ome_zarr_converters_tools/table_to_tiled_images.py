@@ -16,7 +16,7 @@ from ome_zarr_converters_tools.models._collection import ImageInPlate
 from ome_zarr_converters_tools.models._loader import DefaultImageLoader
 from ome_zarr_converters_tools.models._tile import BaseTile
 from ome_zarr_converters_tools.models._tile_region import TiledImage
-from ome_zarr_converters_tools.tools.tile_to_tiled_images import tiled_image_from_tiles
+from ome_zarr_converters_tools.utils._tile_to_tiled_images import tiled_image_from_tiles
 
 
 def build_default_image_loader(
