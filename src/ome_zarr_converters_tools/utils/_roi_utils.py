@@ -1,3 +1,4 @@
+import numpy as np
 from ngio.common import Roi, RoiSlice
 
 
@@ -126,3 +127,55 @@ def roi_corners(
         {"x": x_end, "y": y_end},
     )
     return corners
+
+
+def zero_roi_from_roi(
+    roi: Roi,
+) -> Roi:
+    """Create a zero-origin ROI with the same shape as the input ROI.
+
+    Args:
+        roi: The ROI to create a zero-origin ROI from.
+
+    Returns:
+        The zero-origin ROI.
+    """
+    new_slices = []
+    for roi_slice in roi.slices:
+        new_slice = RoiSlice(
+            axis_name=roi_slice.axis_name,
+            start=0.0,
+            length=roi_slice.length,
+        )
+        new_slices.append(new_slice)
+    return roi.model_copy(update={"slices": new_slices})
+
+
+def bulk_roi_union(
+    rois: list[Roi],
+) -> Roi:
+    """Calculate the union of multiple ROIs.
+
+    To avoit to build the union of all ROIs which can be computationally expensive,
+    this function find the two most distant ROIs and build the union of these two ROIs.
+
+    Args:
+        rois: List of ROIs to union.
+
+    Returns:
+        The union ROI.
+    """
+    ref_roi = rois[0]
+    min_dist, min_roi = np.inf, ref_roi
+    max_dist, max_roi = 0, ref_roi
+    for roi in rois:
+        dist = roi_to_roi_distance(ref_roi, roi)
+        if dist < min_dist:
+            min_dist = dist
+            min_roi = roi
+        if dist > max_dist:
+            max_dist = dist
+            max_roi = roi
+
+    roi_union = min_roi.union(max_roi)
+    return roi_union

@@ -45,6 +45,7 @@ def tiled_image_from_tiles(
                 z_spacing=tile.z_spacing,
                 t_spacing=tile.t_spacing,
                 axes=tile.axes,
+                collection=tile.collection,
             )
         tiled_images[path].add_tile(tile)
     return list(tiled_images.values())

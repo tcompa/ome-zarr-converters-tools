@@ -14,6 +14,9 @@ CANONICAL_AXES_TYPE = Literal["t", "c", "z", "y", "x"]
 canonical_axes: list[CANONICAL_AXES_TYPE] = ["t", "c", "z", "y", "x"]
 COO_TYPE = Literal["world", "pixel"]
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+TILING_MODES = Literal[
+    "auto", "snap_to_grid", "snap_to_corners", "inplace", "no_tiling"
+]
 
 
 class AcquisitionDetails(BaseModel):
@@ -84,7 +87,7 @@ class OmeZarrOptions(BaseModel):
 
 
 class ConverterOptions(BaseModel):
-    tiling_mode: Literal["auto", "grid", "free", "inplace", "none"] = "auto"
+    tiling_mode: TILING_MODES = "auto"
     stage_correction: StageCorrections = Field(default_factory=StageCorrections)
     alignment_correction: AlignmentCorrections = Field(
         default_factory=AlignmentCorrections

@@ -151,6 +151,6 @@ def table_to_tiled_images(
         acquisition=acquisition,
     )
     tiled_images = tiled_image_from_tiles(
-        tiles, context=context, resource=acquisition_path
+        tiles=tiles, context=context, resource=acquisition_path
     )
     return tiled_images

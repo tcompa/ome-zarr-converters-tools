@@ -16,12 +16,9 @@ CANONICAL_AXES_TYPE = Literal["t", "c", "z", "y", "x"]
 COO_TYPE = Literal["world", "pixel"]
 
 
-class TileRegion(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfaceType]):
+class TileRegion(BaseModel, Generic[ImageLoaderInterfaceType]):
     # Region
     roi: Roi
-    # Collection model defining how to build the path to the image(s)
-    # collection: CollectionInterfaceType
-    # Image loader
     image_loader: ImageLoaderInterfaceType
     model_config = ConfigDict(extra="forbid")
 
@@ -40,10 +37,9 @@ class TileRegion(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfac
 
 
 class TiledImage(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfaceType]):
-    regions: list[TileRegion[CollectionInterfaceType, ImageLoaderInterfaceType]] = (
-        Field(default_factory=list)
-    )
+    regions: list[TileRegion[ImageLoaderInterfaceType]] = Field(default_factory=list)
     path: str
+    name: str | None = None
     pixelsize: float = 1.0
     z_spacing: float = 1.0
     t_spacing: float = 1.0
@@ -51,6 +47,7 @@ class TiledImage(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfac
     channel_names: list[str] | None = None
     wavelengths: list[float] | None = None
     axes: list[CANONICAL_AXES_TYPE]
+    collection: CollectionInterfaceType
 
     model_config = ConfigDict(extra="forbid")
 
@@ -66,6 +63,7 @@ class TiledImage(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfac
             fov_dict[fov_name].append(region)
         return fov_dict
 
+    @property
     def pixel_size(self) -> PixelSize:
         """Return the PixelSize of the TiledImage."""
         return PixelSize(

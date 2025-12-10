@@ -31,7 +31,7 @@ class ImageInPlate(CollectionInterface):
     acquisition: int = Field(default=0, ge=0)
 
     def path(self, suffix: str = "") -> str:
-        return f"{self.plate_path}/{self.row}/{self.column}/{self.acquisition}{suffix}"
+        return f"{self.row}/{self.column}/{self.acquisition}{suffix}"
 
     @classmethod
     @field_validator("row", mode="before")
