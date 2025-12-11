@@ -2,7 +2,12 @@ from collections.abc import Callable
 from typing import Any, TypedDict
 
 from ome_zarr_converters_tools.models._tile_region import TiledImage
-from ome_zarr_converters_tools.registration.func import align_regions, tile_regions
+from ome_zarr_converters_tools.registration.func import (
+    apply_align_to_pixel_grid,
+    apply_fov_alignment_corrections,
+    apply_remove_offsets,
+    tile_regions,
+)
 
 
 class Step(TypedDict):
@@ -11,8 +16,10 @@ class Step(TypedDict):
 
 
 _registry: dict[str, Callable[..., TiledImage]] = {
-    "align_regions": align_regions,
+    "align_regions": apply_fov_alignment_corrections,
     "tile_regions": tile_regions,
+    "remove_offsets": apply_remove_offsets,
+    "align_to_pixel_grid": apply_align_to_pixel_grid,
 }
 
 
@@ -45,9 +52,11 @@ def build_default_registration_pipeline(
     alignment_corrections, tiling_mode
 ) -> list[Step]:
     return [
+        Step(name="remove_offsets", params={}),
+        Step(name="align_to_pixel_grid", params={}),
         Step(
             name="align_regions",
-            params={"alignement_corrections": alignment_corrections},
+            params={"alignment_corrections": alignment_corrections},
         ),
         Step(name="tile_regions", params={"tiling_mode": tiling_mode}),
     ]

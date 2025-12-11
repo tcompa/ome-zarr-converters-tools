@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 from ngio import Roi, RoiSlice
 
@@ -31,9 +33,32 @@ def _find_tiling(
     if tiling_mode in ["inplace", "no_tiling"]:
         # No tiling needed Keep all regions in place
         return {key: {"x": 0.0, "y": 0.0, "z": 0.0, "t": 0.0} for key in regions.keys()}
-    raise NotImplementedError(
-        "Tiling modes other than inplace and no_tiling are not implemented yet."
-    )
+    if tiling_mode == "auto":
+        warnings.warn(
+            "Auto tiling mode is not implemented yet. Defaulting to 'inplace'.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return {key: {"x": 0.0, "y": 0.0, "z": 0.0, "t": 0.0} for key in regions.keys()}
+
+    if tiling_mode == "snap_to_corners":
+        warnings.warn(
+            "Snap to corners tiling mode is not implemented yet. "
+            "Defaulting to 'inplace'.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return {key: {"x": 0.0, "y": 0.0, "z": 0.0, "t": 0.0} for key in regions.keys()}
+
+    if tiling_mode == "snap_to_grid":
+        warnings.warn(
+            "Snap to grid tiling mode is not implemented yet. Defaulting to 'inplace'.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return {key: {"x": 0.0, "y": 0.0, "z": 0.0, "t": 0.0} for key in regions.keys()}
+
+    raise ValueError(f"Tiling mode '{tiling_mode}' is not recognized.")
 
 
 def _tile_regions(
