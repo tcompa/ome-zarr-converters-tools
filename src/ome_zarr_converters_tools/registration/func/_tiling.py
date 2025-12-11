@@ -69,7 +69,7 @@ def _tile_regions(
     return regions
 
 
-def tile_regions(
+def apply_mosaic_tiling(
     tiled_image: TiledImage,
     tiling_mode: TILING_MODES,
 ) -> TiledImage:

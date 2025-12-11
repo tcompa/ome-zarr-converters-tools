@@ -5,11 +5,11 @@ from ome_zarr_converters_tools.registration.func._allignment import (
     apply_fov_alignment_corrections,
     apply_remove_offsets,
 )
-from ome_zarr_converters_tools.registration.func._tiling import tile_regions
+from ome_zarr_converters_tools.registration.func._tiling import apply_mosaic_tiling
 
 __all__ = [
     "apply_align_to_pixel_grid",
     "apply_fov_alignment_corrections",
+    "apply_mosaic_tiling",
     "apply_remove_offsets",
-    "tile_regions",
 ]
