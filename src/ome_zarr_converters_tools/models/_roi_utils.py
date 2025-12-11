@@ -1,5 +1,8 @@
+import math
+from collections.abc import Sequence
+
 import numpy as np
-from ngio.common import Roi, RoiSlice
+from ngio import PixelSize, Roi, RoiSlice
 
 
 def move_roi_by(
@@ -58,7 +61,7 @@ def move_to(
 def roi_to_roi_distance(
     roi1: Roi,
     roi2: Roi,
-    axes: list[str] | None = None,
+    axes: Sequence[str] | None = None,
 ) -> float:
     """Calculate the distance between two ROIs along a specified axis.
 
@@ -152,12 +155,13 @@ def zero_roi_from_roi(
 
 
 def bulk_roi_union(
-    rois: list[Roi],
+    rois: Sequence[Roi],
 ) -> Roi:
     """Calculate the union of multiple ROIs.
 
     To avoit to build the union of all ROIs which can be computationally expensive,
-    this function find the two most distant ROIs and build the union of these two ROIs.
+    this function find the min and max ROIs along each axis and builds the union from
+    them.
 
     Args:
         rois: List of ROIs to union.
@@ -165,17 +169,43 @@ def bulk_roi_union(
     Returns:
         The union ROI.
     """
+    min_max_rois = {}
     ref_roi = rois[0]
-    min_dist, min_roi = np.inf, ref_roi
-    max_dist, max_roi = 0, ref_roi
-    for roi in rois:
-        dist = roi_to_roi_distance(ref_roi, roi)
-        if dist < min_dist:
-            min_dist = dist
-            min_roi = roi
-        if dist > max_dist:
-            max_dist = dist
-            max_roi = roi
+    for ax in ref_roi.slices:
+        min_, max_ = np.inf, -np.inf
+        min_roi, max_roi = ref_roi, ref_roi
+        for roi in rois:
+            current_slice = roi.get(axis_name=ax.axis_name)
+            assert current_slice is not None
+            assert current_slice.start is not None
+            if current_slice.start < min_:
+                min_ = current_slice.start
+                min_roi = roi
+            end = current_slice.end
+            assert end is not None
+            if end > max_:
+                max_ = end
+                max_roi = roi
+        min_max_rois[min_roi.get_name()] = min_roi
+        min_max_rois[max_roi.get_name()] = max_roi
 
-    roi_union = min_roi.union(max_roi)
-    return roi_union
+    min_max_rois_values = list(min_max_rois.values())
+    union_roi = min_max_rois_values[0]
+    for roi in min_max_rois_values[1:]:
+        union_roi = union_roi.union(roi)
+    return union_roi
+
+
+def shape_from_rois(
+    rois: Sequence[Roi], axes: Sequence[str], pixel_size: PixelSize
+) -> tuple[int, ...]:
+    """Get the shape from a list of ROIs."""
+    axes_shape = {}
+    roi_union = bulk_roi_union(rois)
+    roi_union = roi_union.to_pixel(pixel_size)
+    for roi_slice in roi_union.slices:
+        assert roi_slice.axis_name in axes
+        length = roi_slice.length
+        assert length is not None
+        axes_shape[roi_slice.axis_name] = math.ceil(length)  # TODO remove ceil?
+    return tuple(axes_shape[ax] for ax in axes)

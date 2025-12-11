@@ -4,11 +4,11 @@ import numpy as np
 from ngio import Roi, RoiSlice
 
 from ome_zarr_converters_tools.models._acquisition import TILING_MODES
-from ome_zarr_converters_tools.models._tile_region import TiledImage, TileRegion
-from ome_zarr_converters_tools.utils._roi_utils import move_roi_by, roi_to_roi_distance
+from ome_zarr_converters_tools.models._roi_utils import move_roi_by, roi_to_roi_distance
+from ome_zarr_converters_tools.models._tile_region import TiledImage, TileSlice
 
 
-def _find_reference_regions(regions: list[TileRegion]) -> TileRegion:
+def _find_reference_regions(regions: list[TileSlice]) -> TileSlice:
     min_dist = np.inf
     reference_region = regions[0]
     reference_region_roi = regions[0].roi
@@ -27,7 +27,7 @@ def _find_reference_regions(regions: list[TileRegion]) -> TileRegion:
 
 
 def _find_tiling(
-    regions: dict[str, TileRegion],
+    regions: dict[str, TileSlice],
     tiling_mode: TILING_MODES,
 ) -> dict[str, dict[str, float]]:
     if tiling_mode in ["inplace", "no_tiling"]:
@@ -62,8 +62,8 @@ def _find_tiling(
 
 
 def _tile_regions(
-    regions: list[TileRegion], vectror: dict[str, float]
-) -> list[TileRegion]:
+    regions: list[TileSlice], vectror: dict[str, float]
+) -> list[TileSlice]:
     for region in regions:
         region.roi = move_roi_by(region.roi, vectror)
     return regions
@@ -82,18 +82,18 @@ def apply_mosaic_tiling(
         tiling_mode: Tiling mode to use.
 
     """
-    fov_regions = tiled_image.group_by_fov()
+    fov_tiles = tiled_image.group_by_fov()
 
     reference_regions = {}
-    for key, regions in fov_regions.items():
-        ref_region = _find_reference_regions(regions)
-        reference_regions[key] = ref_region
+    for fov_tile in fov_tiles:
+        ref_region = _find_reference_regions(fov_tile.regions)
+        reference_regions[fov_tile.fov_name] = ref_region
 
     tiling_instructions = _find_tiling(reference_regions, tiling_mode)
     alligned_regions = []
-    for key, regions in fov_regions.items():
-        instruction = tiling_instructions[key]
-        tiled = _tile_regions(regions, instruction)
+    for fov_tile in fov_tiles:
+        instruction = tiling_instructions[fov_tile.fov_name]
+        tiled = _tile_regions(fov_tile.regions, instruction)
         alligned_regions.extend(tiled)
     tiled_image.regions = alligned_regions
     return tiled_image

@@ -10,21 +10,32 @@ from ome_zarr_converters_tools.models._collection import CollectionInterfaceType
 from ome_zarr_converters_tools.models._loader import (
     ImageLoaderInterfaceType,
 )
+from ome_zarr_converters_tools.models._roi_utils import (
+    bulk_roi_union,
+    roi_to_point_distance,
+    shape_from_rois,
+)
 from ome_zarr_converters_tools.models._tile import BaseTile
 
 CANONICAL_AXES_TYPE = Literal["t", "c", "z", "y", "x"]
 COO_TYPE = Literal["world", "pixel"]
 
 
-class TileRegion(BaseModel, Generic[ImageLoaderInterfaceType]):
-    # Region
+class TileSlice(BaseModel, Generic[ImageLoaderInterfaceType]):
+    """The smallest unit of a tiled image.
+
+    Usually corresponds to the minimal unit in which the source data
+    can be loaded (e.g., a single tiff file from the microscope).
+
+    """
+
     roi: Roi
     image_loader: ImageLoaderInterfaceType
     model_config = ConfigDict(extra="forbid")
 
     @classmethod
     def from_tile(cls, tile: BaseTile) -> Self:
-        """Create a TileRegion from a Tile."""
+        """Create a TileSlice from a Tile."""
         return cls(
             roi=tile.to_roi(),
             # collection=tile.collection,
@@ -32,12 +43,58 @@ class TileRegion(BaseModel, Generic[ImageLoaderInterfaceType]):
         )
 
     def load_data(self, resource: Any) -> np.ndarray:
-        """Load the image data for this TileRegion using the image loader."""
+        """Load the image data for this TileSlice using the image loader."""
         return self.image_loader.load_data(resource=resource)
 
 
+class TileFOVGroup(BaseModel, Generic[ImageLoaderInterfaceType]):
+    """Group of TileSlices belonging to the same acquisition FOV."""
+
+    fov_name: str
+    regions: list[TileSlice[ImageLoaderInterfaceType]] = Field(default_factory=list)
+    axes: list[CANONICAL_AXES_TYPE]
+    pixel_size: PixelSize
+
+    model_config = ConfigDict(extra="forbid")
+
+    def shape(self) -> tuple[int, ...]:
+        """Get the shape of the FOV group by computing the union of all regions."""
+        return shape_from_rois(
+            [region.roi for region in self.regions],
+            self.axes,
+            self.pixel_size,
+        )
+
+    def roi(self) -> Roi:
+        """Get the global ROI covering all TileSlices in the FOV group."""
+        union_roi = bulk_roi_union([region.roi for region in self.regions])
+        union_roi.name = self.fov_name
+        return union_roi
+
+    def ref_slice(self) -> TileSlice[ImageLoaderInterfaceType]:
+        """Get a reference TileSlice for this FOV group."""
+        point = {}
+        for axis in self.axes:
+            point[axis] = 0.0
+
+        ref_region = self.regions[0]
+        ref_distance = roi_to_point_distance(ref_region.roi, point)
+        for region in self.regions[1:]:
+            distance = roi_to_point_distance(region.roi, point)
+            if distance < ref_distance:
+                ref_region = region
+                ref_distance = distance
+        return ref_region
+
+
 class TiledImage(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfaceType]):
-    regions: list[TileRegion[ImageLoaderInterfaceType]] = Field(default_factory=list)
+    """A TiledImage is the unit that will be converted into an OME-Zarr image.
+
+    Can contain multiple TileFOVGroups, each containing multiple TileSlices
+    or it can directly contain a single TileFOVGroup.
+    """
+
+    regions: list[TileSlice[ImageLoaderInterfaceType]] = Field(default_factory=list)
     path: str
     name: str | None = None
     pixelsize: float = 1.0
@@ -51,17 +108,25 @@ class TiledImage(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfac
 
     model_config = ConfigDict(extra="forbid")
 
-    def group_by_fov(self) -> dict[str, list[TileRegion]]:
-        """Group TileRegions by field of view name."""
-        fov_dict: dict[str, list[TileRegion]] = {}
+    def group_by_fov(self) -> list[TileFOVGroup[ImageLoaderInterfaceType]]:
+        """Group TileSlices by field of view name."""
+        fov_dict: dict[str, list[TileSlice]] = {}
         for region in self.regions:
             fov_name = region.roi.name
             if fov_name is None:
-                raise ValueError("TileRegion ROI must have a name to group by FOV.")
+                raise ValueError("TileSlice ROI must have a name to group by FOV.")
             if fov_name not in fov_dict:
                 fov_dict[fov_name] = []
             fov_dict[fov_name].append(region)
-        return fov_dict
+        return [
+            TileFOVGroup(
+                fov_name=fov_name,
+                regions=regions,
+                axes=self.axes,
+                pixel_size=self.pixel_size,
+            )
+            for fov_name, regions in fov_dict.items()
+        ]
 
     @property
     def pixel_size(self) -> PixelSize:
@@ -89,5 +154,19 @@ class TiledImage(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfac
             raise ValueError("Tile z_spacing does not match TiledImage z_spacing.")
         if self.t_spacing != tile.t_spacing:
             raise ValueError("Tile t_spacing does not match TiledImage t_spacing.")
-        tile_region = TileRegion.from_tile(tile)
+        tile_region = TileSlice.from_tile(tile)
         self.regions.append(tile_region)
+
+    def shape(self) -> tuple[int, ...]:
+        """Get the shape of the TiledImage by computing the union of all regions."""
+        return shape_from_rois(
+            [region.roi for region in self.regions],
+            self.axes,
+            self.pixel_size,
+        )
+
+    def roi(self) -> Roi:
+        """Get the global ROI covering all TileSlices in the TiledImage."""
+        union_roi = bulk_roi_union([region.roi for region in self.regions])
+        union_roi.name = self.name or self.path
+        return union_roi

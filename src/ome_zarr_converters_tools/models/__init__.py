@@ -19,7 +19,7 @@ from ome_zarr_converters_tools.models._loader import (
     ImageLoaderInterfaceType,
 )
 from ome_zarr_converters_tools.models._tile import BaseTile
-from ome_zarr_converters_tools.models._tile_region import TiledImage, TileRegion
+from ome_zarr_converters_tools.models._tile_region import TiledImage, TileSlice
 
 __all__ = [
     "TILING_MODES",
@@ -39,6 +39,6 @@ __all__ = [
     "OmeZarrOptions",
     "SingleImage",
     "SingleImage",
-    "TileRegion",
+    "TileSlice",
     "TiledImage",
 ]

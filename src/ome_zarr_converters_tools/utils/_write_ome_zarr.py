@@ -1,4 +1,3 @@
-import math
 from typing import Any
 
 import zarr
@@ -6,54 +5,37 @@ from ngio import PixelSize, RoiSlice, create_empty_ome_zarr
 from ngio.tables import RoiTable
 from ngio.utils._zarr_utils import NgioSupportedStore
 
-from ome_zarr_converters_tools.models._acquisition import OmeZarrOptions, canonical_axes
-from ome_zarr_converters_tools.models._tile_region import TiledImage, TileRegion
-from ome_zarr_converters_tools.utils._roi_utils import bulk_roi_union
+from ome_zarr_converters_tools.models._acquisition import OmeZarrOptions
+from ome_zarr_converters_tools.models._tile_region import TiledImage, TileSlice
 
 
-def _compute_fov_properties(
-    regions: list[TileRegion],
-) -> dict[str, Any]:
-    raise NotImplementedError("This function is not yet implemented.")
-
-
-def _compute_image_properties(
-    regions: list[TileRegion],
-    ome_zarr_options: OmeZarrOptions,
-) -> dict[str, Any]:
-    roi_union = bulk_roi_union([region.roi for region in regions])
-    axes_shape = {}
-    for roi_slice in roi_union.slices:
-        length = roi_slice.length
-        assert length is not None
-        axes_shape[roi_slice.axis_name] = math.ceil(length)
-    shape, axes, chunks = [], [], []
-    for c_ax in canonical_axes:
-        if c_ax in axes_shape:
-            shape.append(axes_shape[c_ax])
-            axes.append(c_ax)
-            if c_ax == "x" or c_ax == "y":
-                _chunks_size = min(axes_shape[c_ax], ome_zarr_options.max_xy_chunk)
-                chunks.append(_chunks_size)
-            elif c_ax == "z":
-                chunks.append(ome_zarr_options.z_chunk)
-            elif c_ax == "c":
-                chunks.append(ome_zarr_options.c_chunk)
-            elif c_ax == "t":
-                chunks.append(ome_zarr_options.t_chunk)
-            else:
-                chunks.append(1)
-    return {
-        "shape": tuple(shape),
-        "axes_names": axes,
-        "chunks": tuple(chunks),
-    }
+def _compute_chunk_size(
+    tiled_image: TiledImage, ome_zarr_options: OmeZarrOptions
+) -> tuple[int, ...]:
+    """Compute the chunk size for the tiled image."""
+    axes = tiled_image.axes
+    fov_regions = tiled_image.group_by_fov()[0]
+    fov_shape = fov_regions.shape()
+    chunks = []
+    for ax, fov_sh in zip(axes, fov_shape, strict=True):
+        if ax == "x" or ax == "y":
+            _chunks_size = min(fov_sh, ome_zarr_options.max_xy_chunk)
+            chunks.append(_chunks_size)
+        elif ax == "z":
+            chunks.append(ome_zarr_options.z_chunk)
+        elif ax == "c":
+            chunks.append(ome_zarr_options.c_chunk)
+        elif ax == "t":
+            chunks.append(ome_zarr_options.t_chunk)
+        else:
+            chunks.append(1)
+    return tuple(chunks)
 
 
 def _region_to_pixel_coordinates(
-    regions: list[TileRegion],
+    regions: list[TileSlice],
     pixel_size: PixelSize,
-) -> list[TileRegion]:
+) -> list[TileSlice]:
     """Convert TileRegion ROIs from pixel coordinates to world coordinates.
 
     This function modifies the TileRegions in place.
@@ -99,31 +81,35 @@ def write_tiled_image_as_zarr(
         tiled_image.regions,
         tiled_image.pixel_size,
     )
-    image_properties = _compute_image_properties(tiled_image.regions, ome_zarr_options)
     mode = "w" if overwrite else "w-"
     base_group = zarr.open_group(store=base_store, mode=mode, path=tiled_image.path)
     ome_zarr = create_empty_ome_zarr(
         store=base_group,
+        axes_names=tiled_image.axes,
+        shape=tiled_image.shape(),
+        chunks=_compute_chunk_size(tiled_image, ome_zarr_options),
         pixelsize=tiled_image.pixelsize,
         z_spacing=tiled_image.z_spacing,
         time_spacing=tiled_image.t_spacing,
         levels=ome_zarr_options.num_levels,
         overwrite=overwrite,
-        **image_properties,
     )
     image = ome_zarr.get_image()
     for region in tiled_image.regions:
         region_data = region.load_data(resource)
         region_data = region_data[None, None, None, ...]
         image.set_roi(roi=region.roi, patch=region_data)
+    image.consolidate()
 
-    rois = []
-    for key, regions in tiled_image.group_by_fov().items():
-        roi_union = bulk_roi_union([region.roi for region in regions])
-        roi_union.name = key
-        rois.append(roi_union.to_world(pixel_size=tiled_image.pixel_size))
-    roi_table = RoiTable(rois=rois)
-    ome_zarr.add_table("FOV_ROI_table", roi_table, backend="csv")
+    fov_tiles = tiled_image.group_by_fov()
+    if len(fov_tiles) > 1:
+        rois = []
+        for fov_tile in tiled_image.group_by_fov():
+            roi_union = fov_tile.roi().to_world(pixel_size=tiled_image.pixel_size)
+            rois.append(roi_union)
+
+        roi_table = RoiTable(rois=rois)
+        ome_zarr.add_table("FOV_ROI_table", roi_table, backend="csv")
 
     well_roi = ome_zarr.build_image_roi_table()
     ome_zarr.add_table("well_ROI_table", well_roi, backend="csv")
