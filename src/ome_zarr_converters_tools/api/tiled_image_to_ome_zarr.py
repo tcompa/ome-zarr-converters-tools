@@ -6,7 +6,7 @@ from ngio.utils._zarr_utils import NgioSupportedStore
 
 from ome_zarr_converters_tools.models import OmeZarrOptions, TiledImage
 from ome_zarr_converters_tools.registration import (
-    Step,
+    RegistrationStep,
     apply_registration_pipeline,
 )
 from ome_zarr_converters_tools.utils._write_ome_zarr import write_tiled_image_as_zarr
@@ -15,7 +15,7 @@ from ome_zarr_converters_tools.utils._write_ome_zarr import write_tiled_image_as
 def tiled_image_to_ome_zarr(
     base_store: NgioSupportedStore,
     tiled_image: TiledImage,
-    registration_pipeline: list[Step],
+    registration_pipeline: list[RegistrationStep],
     ome_zarr_options: OmeZarrOptions,
     resource: Any | None = None,
 ) -> dict[str, Any]:

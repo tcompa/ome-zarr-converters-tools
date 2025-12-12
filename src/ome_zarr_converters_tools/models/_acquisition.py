@@ -2,6 +2,7 @@
 
 from typing import Literal
 
+from ngio import DefaultNgffVersion, NgffVersions
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -83,6 +84,7 @@ class OmeZarrOptions(BaseModel):
     z_chunk: int = Field(default=10, ge=1)
     c_chunk: int = Field(default=1, ge=1)
     t_chunk: int = Field(default=1, ge=1)
+    ngff_version: NgffVersions = DefaultNgffVersion
     model_config = ConfigDict(extra="forbid")
 
 

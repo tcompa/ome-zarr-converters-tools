@@ -30,6 +30,10 @@ class ImageInPlate(CollectionInterface):
     column: int = Field(ge=1)
     acquisition: int = Field(default=0, ge=0)
 
+    @property
+    def well(self) -> str:
+        return f"{self.row}{self.column}"
+
     def path(self, suffix: str = "") -> str:
         return f"{self.row}/{self.column}/{self.acquisition}{suffix}"
 
