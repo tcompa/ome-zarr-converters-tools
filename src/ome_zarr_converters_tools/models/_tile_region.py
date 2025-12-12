@@ -105,6 +105,7 @@ class TiledImage(BaseModel, Generic[CollectionInterfaceType, ImageLoaderInterfac
     wavelengths: list[float] | None = None
     axes: list[CANONICAL_AXES_TYPE]
     collection: CollectionInterfaceType
+    attributes: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid")
 

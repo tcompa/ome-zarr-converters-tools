@@ -43,6 +43,7 @@ def tiled_image_from_tiles(
             context.acquisition_details.data_type
             or tile.image_loader.find_data_type(resource)
         )
+        attribues = tile.model_extra or {}
         if path not in tiled_images:
             tiled_images[path] = TiledImage(
                 path=path,
@@ -55,6 +56,7 @@ def tiled_image_from_tiles(
                 t_spacing=tile.t_spacing,
                 axes=tile.axes,
                 collection=tile.collection,
+                attributes=attribues,
             )
         tiled_images[path].add_tile(tile)
     return list(tiled_images.values())
