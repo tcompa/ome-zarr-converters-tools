@@ -1,36 +1,33 @@
-import warnings
-
 from ome_zarr_converters_tools.models._acquisition import TILING_MODES
 from ome_zarr_converters_tools.models._roi_utils import move_roi_by
 from ome_zarr_converters_tools.models._tile_region import TiledImage, TileSlice
+from ome_zarr_converters_tools.registration.func._snap_utils import (
+    NotAGridError,
+    calculate_snap_to_corner_offset,
+    calculate_snap_to_grid_offset,
+)
 
 
 def _no_tiling(
     regions: dict[str, TileSlice],
 ) -> dict[str, dict[str, float]]:
-    return {key: {"x": 0.0, "y": 0.0, "z": 0.0, "t": 0.0} for key in regions.keys()}
+    return {key: {"x": 0.0, "y": 0.0} for key in regions.keys()}
 
 
 def _snap_to_corners_tiling(
     regions: dict[str, TileSlice],
 ) -> dict[str, dict[str, float]]:
-    warnings.warn(
-        "Snap to corners tiling mode is not implemented yet. Defaulting to 'inplace'.",
-        UserWarning,
-        stacklevel=2,
-    )
-    return {key: {"x": 0.0, "y": 0.0, "z": 0.0, "t": 0.0} for key in regions.keys()}
+    out = calculate_snap_to_corner_offset(regions)
+    print(out)
+    return out
 
 
 def _snap_to_grid_tiling(
     regions: dict[str, TileSlice],
 ) -> dict[str, dict[str, float]]:
-    warnings.warn(
-        "Snap to grid tiling mode is not implemented yet. Defaulting to 'inplace'.",
-        UserWarning,
-        stacklevel=2,
-    )
-    return {key: {"x": 0.0, "y": 0.0, "z": 0.0, "t": 0.0} for key in regions.keys()}
+    out = calculate_snap_to_grid_offset(regions)
+    print(out)
+    return out
 
 
 def _auto_tiling(
@@ -38,7 +35,7 @@ def _auto_tiling(
 ) -> dict[str, dict[str, float]]:
     try:
         return _snap_to_grid_tiling(regions)
-    except Exception:
+    except NotAGridError:
         return _snap_to_corners_tiling(regions)
 
 
