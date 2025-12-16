@@ -19,7 +19,7 @@ from ome_zarr_converters_tools.models import (
 from ome_zarr_converters_tools.utils import tiled_image_from_tiles
 
 
-def build_default_image_loader(
+def _build_default_image_loader(
     data: dict[str, Any],
 ) -> dict[str, Any]:
     """Build an image loader for a tile row dictionary."""
@@ -35,7 +35,7 @@ def build_default_image_loader(
     return out_data
 
 
-def build_plate_collection(
+def _build_plate_collection(
     data: dict[str, Any], plate_name: str, acquisition: int
 ) -> dict[str, Any]:
     """Build an ImageInPlate collection for a tile row dictionary."""
@@ -81,12 +81,13 @@ def _open_hcs_dir(
     return df, acquisition_details
 
 
-def _table_to_tiles(
+def tiled_images_from_table(
     tiles_table: pd.DataFrame,
     context: FullContextBaseModel,
     plate_name: str,
-    acquisition: int,
-) -> list[BaseTile]:
+    acquisition: int = 0,
+    acquisition_path: Path | None = None,
+) -> list[TiledImage]:
     """Build tiles from a tiles table DataFrame.
 
     Args:
@@ -94,12 +95,13 @@ def _table_to_tiles(
         context: Full context model for the conversion.
         plate_name: Name of the plate.
         acquisition: Acquisition index.
+        acquisition_path: Optional path to the acquisition directory.
     """
     tiles = []
     for _, row in tiles_table.iterrows():
         row_dict = row.to_dict()
-        row_dict = build_default_image_loader(row_dict)
-        row_dict = build_plate_collection(
+        row_dict = _build_default_image_loader(row_dict)
+        row_dict = _build_plate_collection(
             row_dict, plate_name=plate_name, acquisition=acquisition
         )
 
@@ -109,10 +111,13 @@ def _table_to_tiles(
         )
         tiles.append(tile)
 
-    return tiles
+    tiled_images = tiled_image_from_tiles(
+        tiles=tiles, context=context, resource=acquisition_path
+    )
+    return tiled_images
 
 
-def table_to_tiled_images(
+def tiled_images_from_csv(
     acquisition_path: Path,
     plate_name: str,
     acquisition: int,
@@ -144,13 +149,10 @@ def table_to_tiled_images(
         converter_options=converter_options,
     )
 
-    tiles = _table_to_tiles(
+    return tiled_images_from_table(
         tiles_table=df,
         context=context,
         plate_name=plate_name,
         acquisition=acquisition,
+        acquisition_path=acquisition_path,
     )
-    tiled_images = tiled_image_from_tiles(
-        tiles=tiles, context=context, resource=acquisition_path
-    )
-    return tiled_images

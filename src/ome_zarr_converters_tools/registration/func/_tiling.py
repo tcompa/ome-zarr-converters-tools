@@ -17,17 +17,13 @@ def _no_tiling(
 def _snap_to_corners_tiling(
     regions: dict[str, TileSlice],
 ) -> dict[str, dict[str, float]]:
-    out = calculate_snap_to_corner_offset(regions)
-    print(out)
-    return out
+    return calculate_snap_to_corner_offset(regions)
 
 
 def _snap_to_grid_tiling(
     regions: dict[str, TileSlice],
 ) -> dict[str, dict[str, float]]:
-    out = calculate_snap_to_grid_offset(regions)
-    print(out)
-    return out
+    return calculate_snap_to_grid_offset(regions)
 
 
 def _auto_tiling(
