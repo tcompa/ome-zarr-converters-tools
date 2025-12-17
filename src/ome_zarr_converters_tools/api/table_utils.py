@@ -5,18 +5,25 @@ from typing import Any
 
 import pandas as pd
 import toml
+from zarr.abc.store import Store
 
+from ome_zarr_converters_tools.api.tiles_preprocessing_pipeline import (
+    tiles_preprocessing_pipeline,
+)
+from ome_zarr_converters_tools.collection_setup import (
+    SetupCollectionStep,
+)
+from ome_zarr_converters_tools.filters import FilterStep
 from ome_zarr_converters_tools.models import (
     AcquisitionDetails,
     BaseTile,
     ConverterOptions,
     DefaultImageLoader,
     FullContextBaseModel,
-    HCSFromTableContext,
     ImageInPlate,
     TiledImage,
 )
-from ome_zarr_converters_tools.utils import tiled_image_from_tiles
+from ome_zarr_converters_tools.validators import ValidatorStep
 
 
 def _build_default_image_loader(
@@ -47,7 +54,7 @@ def _build_plate_collection(
         else:
             out_data[key] = value
     collection = ImageInPlate(
-        **collection_data, plate_path=plate_name, acquisition=acquisition
+        **collection_data, plate_name=plate_name, acquisition=acquisition
     )
     out_data["collection"] = collection
     return out_data
@@ -81,21 +88,27 @@ def _open_hcs_dir(
     return df, acquisition_details
 
 
-def tiled_images_from_table(
+def hcs_images_from_dataframe(
     tiles_table: pd.DataFrame,
     context: FullContextBaseModel,
     plate_name: str,
     acquisition: int = 0,
-    acquisition_path: Path | None = None,
+    filters: list[FilterStep] | None = None,
+    validators: list[ValidatorStep] | None = None,
+    store: Store | None = None,
+    resource: Path | None = None,
 ) -> list[TiledImage]:
-    """Build tiles from a tiles table DataFrame.
+    """Build a list of TiledImages belonging to an HCS acquisition.
 
     Args:
         tiles_table: DataFrame containing the tiles table.
         context: Full context model for the conversion.
         plate_name: Name of the plate.
         acquisition: Acquisition index.
-        acquisition_path: Optional path to the acquisition directory.
+        filters: Optional list of filter steps to apply to the tiles.
+        validators: Optional list of validator steps to apply to the tiles.
+        store: Optional Zarr store to set up the collection in.
+        resource: Optional resource to pass to image loaders.
     """
     tiles = []
     for _, row in tiles_table.iterrows():
@@ -111,19 +124,35 @@ def tiled_images_from_table(
         )
         tiles.append(tile)
 
-    tiled_images = tiled_image_from_tiles(
-        tiles=tiles, context=context, resource=acquisition_path
+    if store is not None:
+        setup_step = SetupCollectionStep(
+            name="ImageInPlate",
+            store=store,
+            ngff_version=context.converter_options.omezarr_options.ngff_version,
+        )
+    else:
+        setup_step = None
+    tiled_images = tiles_preprocessing_pipeline(
+        tiles=tiles,
+        context=context,
+        validators=validators,
+        resource=resource,
+        filters=filters,
+        setup_collection_step=setup_step,
     )
     return tiled_images
 
 
-def tiled_images_from_csv(
+def hcs_images_from_csv(
     acquisition_path: Path,
     plate_name: str,
     acquisition: int,
     converter_options: ConverterOptions,
     table_name: str = "tiles.csv",
     acquisition_details_name: str = "acquisition_details.toml",
+    filters: list[FilterStep] | None = None,
+    validators: list[ValidatorStep] | None = None,
+    store: Store | None = None,
 ) -> list[TiledImage]:
     """Build tiles for HCS data from a table.
 
@@ -134,25 +163,26 @@ def tiled_images_from_csv(
         converter_options: Converter options.
         table_name: Name of the table file.
         acquisition_details_name: Name of the acquisition details file.
+        filters: Optional list of filter steps to apply to the tiles.
+        validators: Optional list of validator steps to apply to the tiles.
+        store: Optional Zarr store to set up the collection in.
     """
     df, acquisition_details = _open_hcs_dir(
         acquisition_path=acquisition_path,
         table_name=table_name,
         acquisition_details_name=acquisition_details_name,
     )
-
-    context = HCSFromTableContext(
-        acquisition_path=acquisition_path,
-        plate_name=plate_name,
-        acquisition=acquisition,
+    context = FullContextBaseModel(
         acquisition_details=acquisition_details,
         converter_options=converter_options,
     )
-
-    return tiled_images_from_table(
+    return hcs_images_from_dataframe(
         tiles_table=df,
         context=context,
         plate_name=plate_name,
         acquisition=acquisition,
-        acquisition_path=acquisition_path,
+        filters=filters,
+        validators=validators,
+        store=store,
+        resource=acquisition_path,
     )

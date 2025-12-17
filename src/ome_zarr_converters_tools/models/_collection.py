@@ -10,7 +10,7 @@ ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 class CollectionInterface(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    def path(self, suffix: str = "") -> str:
+    def path(self) -> str:
         raise NotImplementedError("Subclasses must implement path method.")
 
 
@@ -19,23 +19,28 @@ CollectionInterfaceType = TypeVar("CollectionInterfaceType", bound=CollectionInt
 
 class SingleImage(CollectionInterface):
     image_path: str
+    suffix: str = ""
 
-    def path(self, suffix: str = "") -> str:
-        return f"{self.image_path}{suffix}"
+    def path(self) -> str:
+        return f"{self.image_path}{self.suffix}"
 
 
 class ImageInPlate(CollectionInterface):
-    plate_path: str
+    plate_name: str
     row: str
     column: int = Field(ge=1)
     acquisition: int = Field(default=0, ge=0)
+    suffix: str = ""
 
     @property
     def well(self) -> str:
         return f"{self.row}{self.column}"
 
-    def path(self, suffix: str = "") -> str:
-        return f"{self.row}/{self.column}/{self.acquisition}{suffix}"
+    def path_in_well(self) -> str:
+        return f"{self.acquisition}{self.suffix}"
+
+    def path(self) -> str:
+        return f"{self.row}/{self.column}/{self.path_in_well()}"
 
     @classmethod
     @field_validator("row", mode="before")

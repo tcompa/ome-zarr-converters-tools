@@ -1,30 +1,6 @@
-import re
 from typing import Any, ParamSpec, Protocol, TypedDict
 
-from ome_zarr_converters_tools.models._collection import ImageInPlate
-from ome_zarr_converters_tools.models._tile import BaseTile
-
-
-def apply_path_include_regex_filter(tile: BaseTile, regex: str) -> bool:
-    base_path = tile.collection.path()
-    if re.search(regex, base_path):
-        return True
-    return False
-
-
-def apply_path_exclude_regex_filter(tile: BaseTile, regex: str) -> bool:
-    return not apply_path_include_regex_filter(tile, regex)
-
-
-def apply_well_filter(tile: BaseTile, wells_to_remove: list[str]) -> bool:
-    if not isinstance(tile.collection, ImageInPlate):
-        raise ValueError(
-            "Well filter can only be applied to To tile with ImageInPlate collection."
-        )
-    if tile.collection.well in wells_to_remove:
-        return False
-    return True
-
+from ome_zarr_converters_tools.models._tile_region import TiledImage
 
 P = ParamSpec("P")
 
@@ -37,7 +13,7 @@ class ValidatorStep(TypedDict):
 class ValidatorFunctionProtocol(Protocol[P]):
     __name__: str
 
-    def __call__(self, tile: BaseTile, *args: P.args, **kwargs: P.kwargs) -> None: ...
+    def __call__(self, tile: TiledImage, *args: P.args, **kwargs: P.kwargs) -> None: ...
 
 
 _validator_registry: dict[str, ValidatorFunctionProtocol] = {}
@@ -64,8 +40,8 @@ def add_validator(
 
 
 def apply_validator_pipeline(
-    tiles: list[BaseTile], validators_config: list[ValidatorStep]
-) -> list[BaseTile]:
+    tiles: list[TiledImage], validators_config: list[ValidatorStep]
+) -> list[TiledImage]:
     for step in validators_config:
         step_name = step.get("name")
         step_params = step.get("params", {})

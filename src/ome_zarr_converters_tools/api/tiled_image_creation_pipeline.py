@@ -12,7 +12,7 @@ from ome_zarr_converters_tools.registration import (
 from ome_zarr_converters_tools.utils._write_ome_zarr import write_tiled_image_as_zarr
 
 
-def tiled_image_to_ome_zarr(
+def tiled_image_creation_pipeline(
     base_store: NgioSupportedStore,
     tiled_image: TiledImage,
     registration_pipeline: list[RegistrationStep],

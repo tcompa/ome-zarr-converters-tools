@@ -3,10 +3,10 @@
 from typing import Literal
 
 from ngio import DefaultNgffVersion, NgffVersions
+from ngio.tables import TableBackend
 from pydantic import (
     BaseModel,
     ConfigDict,
-    DirectoryPath,
     Field,
     field_validator,
 )
@@ -18,6 +18,7 @@ ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 TILING_MODES = Literal[
     "auto", "snap_to_grid", "snap_to_corners", "inplace", "no_tiling"
 ]
+TABLE_BACKENDS = Literal["anndata", "json", "csv", "parquet"]
 
 
 class AcquisitionDetails(BaseModel):
@@ -85,6 +86,7 @@ class OmeZarrOptions(BaseModel):
     c_chunk: int = Field(default=1, ge=1)
     t_chunk: int = Field(default=1, ge=1)
     ngff_version: NgffVersions = DefaultNgffVersion
+    table_backend: TableBackend = "anndata"
     model_config = ConfigDict(extra="forbid")
 
 
@@ -103,13 +105,4 @@ class FullContextBaseModel(BaseModel):
 
     acquisition_details: AcquisitionDetails
     converter_options: ConverterOptions
-    model_config = ConfigDict(extra="forbid")
-
-
-class HCSFromTableContext(FullContextBaseModel):
-    """Context model for HCS data from a table."""
-
-    acquisition_path: DirectoryPath
-    plate_name: str = "plate"
-    acquisition: int = Field(default=0, ge=0)
     model_config = ConfigDict(extra="forbid")

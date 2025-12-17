@@ -6,7 +6,6 @@ from ome_zarr_converters_tools.models._acquisition import (
     AlignmentCorrections,
     ConverterOptions,
     FullContextBaseModel,
-    HCSFromTableContext,
     OmeZarrOptions,
 )
 from ome_zarr_converters_tools.models._collection import (
@@ -31,7 +30,6 @@ __all__ = [
     "ConverterOptions",
     "DefaultImageLoader",
     "FullContextBaseModel",
-    "HCSFromTableContext",
     "ImageInPlate",
     "ImageInPlate",
     "ImageLoaderInterfaceType",

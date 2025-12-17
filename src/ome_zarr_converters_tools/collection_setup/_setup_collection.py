@@ -1,41 +1,21 @@
 """Collection setup functions for OME-Zarr converters tools."""
 
-from collections.abc import Mapping
-from typing import Any, ParamSpec, Protocol
+from typing import Protocol, TypedDict
 
+from ngio import DefaultNgffVersion, NgffVersions
 from zarr.abc.store import Store
 
-from ome_zarr_converters_tools.models._collection import (
-    ImageInPlate,
-    SingleImage,
-)
+from ome_zarr_converters_tools.collection_setup._plate_setup import setup_plates
 from ome_zarr_converters_tools.models._tile_region import TiledImage
 
 
-def setup_plates(
-    store: Store,
-    tiled_image: list[TiledImage],
-    ngff_version: str = "0.5",
-) -> None:
-    """Set up an ImageInPlate collection in the Zarr group."""
-    assert isinstance(tiled_image[0].collection, ImageInPlate)
-    raise NotImplementedError("Plate setup is not yet implemented.")
+class SetupCollectionStep(TypedDict):
+    name: str
+    store: Store
+    ngff_version: NgffVersions
 
 
-def setup_single_image(
-    store: Store,
-    tiled_image: list[TiledImage],
-    ngff_version: str = "0.5",
-) -> None:
-    """Set up a SingleImage collection in the Zarr group."""
-    assert isinstance(tiled_image[0].collection, SingleImage)
-    raise NotImplementedError("Single image setup is not yet implemented.")
-
-
-P = ParamSpec("P")
-
-
-class SetupCollectionFunction(Protocol[P]):
+class SetupCollectionFunction(Protocol):
     """Protocol for collection setup handler functions.
 
     The function is responsible for setting up the collection structure
@@ -47,16 +27,14 @@ class SetupCollectionFunction(Protocol[P]):
     def __call__(
         self,
         store: Store,
-        tiled_image: list[TiledImage],
-        *args: P.args,
-        **kwargs: P.kwargs,
+        tiled_images: list[TiledImage],
+        ngff_version: NgffVersions = DefaultNgffVersion,
     ) -> None:
         """Set up the collection in the Zarr store."""
         ...
 
 
 _collection_handler_registry: dict[str, SetupCollectionFunction] = {
-    "SingleImage": setup_single_image,
     "ImageInPlate": setup_plates,
 }
 
@@ -87,27 +65,26 @@ def add_collection_handler(
 
 
 def setup_collection(
-    store: Store,
-    tiles: list[TiledImage],
-    handler_type: str,
-    **collection_handler_config: Mapping[str, Any],
+    tiled_images: list[TiledImage],
+    setup_collection_step: SetupCollectionStep,
 ) -> None:
     """Set up the collection in the Zarr group using the specified handler.
 
     Args:
-        store: Store to set up the collection in.
-        tiles: List of TiledImage to set up the collection for.
-        handler_type: Type of the collection setup handler to use.
-        collection_handler_config: Configuration for the collection setup handler.
-            Must contain the key 'type' with the name of the registered
-            collection setup handler.
+        tiled_images: List of TiledImage to set up the collection for.
+        setup_collection_step: Configuration for the collection setup step.
 
     Returns:
         The list of TiledImage after applying the collection setup handler.
     """
-    handler_function = _collection_handler_registry.get(handler_type)
+    handler_function = _collection_handler_registry.get(setup_collection_step["name"])
     if handler_function is None:
         raise ValueError(
-            f"Collection setup handler '{handler_type}' is not registered."
+            f"Collection setup handler '{setup_collection_step['name']}' "
+            "is not registered."
         )
-    return handler_function(store, tiles, **collection_handler_config)
+    return handler_function(
+        tiled_images=tiled_images,
+        store=setup_collection_step["store"],
+        ngff_version=setup_collection_step.get("ngff_version", DefaultNgffVersion),
+    )
