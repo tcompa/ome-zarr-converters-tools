@@ -22,7 +22,7 @@ exclude = [
     # Exclude typically large files and directories that are not needed
     # This might not exists or be named differently in your project
     # TBD if we want to include these or not
-    "docs",
+    "docs/*",
     "data",
     "examples",
     "notebooks",
@@ -60,6 +60,7 @@ dependencies = [
     "pillow",
     "tifffile",
     "toml",
+    "check-manifest>=0.51,<0.52",
     # "anndata>=0.12.6",
 ]
 
