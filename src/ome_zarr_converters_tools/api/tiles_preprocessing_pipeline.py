@@ -1,7 +1,5 @@
 """Functions to build TiledImage models from Tile models."""
 
-from typing import Any
-
 from ome_zarr_converters_tools.collection_setup import (
     SetupCollectionStep,
     setup_collection,
@@ -9,7 +7,7 @@ from ome_zarr_converters_tools.collection_setup import (
 from ome_zarr_converters_tools.filters import FilterStep, apply_filter_pipeline
 from ome_zarr_converters_tools.models import (
     BaseTile,
-    FullContextBaseModel,
+    ContextModel,
     TiledImage,
 )
 from ome_zarr_converters_tools.utils import tiled_image_from_tiles
@@ -18,10 +16,9 @@ from ome_zarr_converters_tools.validators import ValidatorStep, apply_validator_
 
 def tiles_preprocessing_pipeline(
     tiles: list[BaseTile],
-    context: FullContextBaseModel,
+    context: ContextModel,
     filters: list[FilterStep] | None = None,
     validators: list[ValidatorStep] | None = None,
-    resource: Any | None = None,
     setup_collection_step: SetupCollectionStep | None = None,
 ) -> list[TiledImage]:
     """Process tiles through the preprocessing pipeline to create TiledImages.
@@ -34,7 +31,6 @@ def tiles_preprocessing_pipeline(
         context: Full context model for the conversion.
         filters: Optional list of filter steps to apply to the tiles.
         validators: Optional list of validator steps to apply to the tiles.
-        resource: Optional resource to pass to image loaders.
         setup_collection_step: Optional configuration for the collection setup step.
 
     Returns:
@@ -45,7 +41,6 @@ def tiles_preprocessing_pipeline(
     tiled_images = tiled_image_from_tiles(
         tiles=tiles,
         context=context,
-        resource=resource,
     )
     if validators is not None:
         tiled_images = apply_validator_pipeline(

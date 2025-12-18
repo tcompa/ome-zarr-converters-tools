@@ -6,6 +6,7 @@ from ngio import DefaultNgffVersion, NgffVersions
 from zarr.abc.store import Store
 
 from ome_zarr_converters_tools.collection_setup._plate_setup import setup_plates
+from ome_zarr_converters_tools.models._acquisition import OVERWRITE_MODES
 from ome_zarr_converters_tools.models._tile_region import TiledImage
 
 
@@ -13,6 +14,7 @@ class SetupCollectionStep(TypedDict):
     name: str
     store: Store
     ngff_version: NgffVersions
+    overwrite_mode: OVERWRITE_MODES
 
 
 class SetupCollectionFunction(Protocol):
@@ -29,12 +31,13 @@ class SetupCollectionFunction(Protocol):
         store: Store,
         tiled_images: list[TiledImage],
         ngff_version: NgffVersions = DefaultNgffVersion,
+        overwrite_mode: OVERWRITE_MODES = "no_overwrite",
     ) -> None:
         """Set up the collection in the Zarr store."""
         ...
 
 
-_collection_handler_registry: dict[str, SetupCollectionFunction] = {
+_collection_setup_registry: dict[str, SetupCollectionFunction] = {
     "ImageInPlate": setup_plates,
 }
 
@@ -59,9 +62,9 @@ def add_collection_handler(
     """
     if name is None:
         name = function.__name__
-    if not overwrite and name in _collection_handler_registry:
+    if not overwrite and name in _collection_setup_registry:
         raise ValueError(f"Collection setup handler '{name}' is already registered.")
-    _collection_handler_registry[name] = function
+    _collection_setup_registry[name] = function
 
 
 def setup_collection(
@@ -77,14 +80,15 @@ def setup_collection(
     Returns:
         The list of TiledImage after applying the collection setup handler.
     """
-    handler_function = _collection_handler_registry.get(setup_collection_step["name"])
-    if handler_function is None:
+    setup_function = _collection_setup_registry.get(setup_collection_step["name"])
+    if setup_function is None:
         raise ValueError(
             f"Collection setup handler '{setup_collection_step['name']}' "
             "is not registered."
         )
-    return handler_function(
+    return setup_function(
         tiled_images=tiled_images,
         store=setup_collection_step["store"],
         ngff_version=setup_collection_step.get("ngff_version", DefaultNgffVersion),
+        overwrite_mode=setup_collection_step.get("overwrite_mode", "no_overwrite"),
     )

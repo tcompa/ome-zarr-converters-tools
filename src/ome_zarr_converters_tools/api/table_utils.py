@@ -19,10 +19,11 @@ from ome_zarr_converters_tools.models import (
     BaseTile,
     ConverterOptions,
     DefaultImageLoader,
-    FullContextBaseModel,
+    HCSContextModel,
     ImageInPlate,
     TiledImage,
 )
+from ome_zarr_converters_tools.models._acquisition import OVERWRITE_MODES
 from ome_zarr_converters_tools.validators import ValidatorStep
 
 
@@ -90,24 +91,17 @@ def _open_hcs_dir(
 
 def hcs_images_from_dataframe(
     tiles_table: pd.DataFrame,
-    context: FullContextBaseModel,
-    plate_name: str,
-    acquisition: int = 0,
+    context: HCSContextModel,
     filters: list[FilterStep] | None = None,
     validators: list[ValidatorStep] | None = None,
-    store: Store | None = None,
-    resource: Path | None = None,
 ) -> list[TiledImage]:
     """Build a list of TiledImages belonging to an HCS acquisition.
 
     Args:
         tiles_table: DataFrame containing the tiles table.
         context: Full context model for the conversion.
-        plate_name: Name of the plate.
-        acquisition: Acquisition index.
         filters: Optional list of filter steps to apply to the tiles.
         validators: Optional list of validator steps to apply to the tiles.
-        store: Optional Zarr store to set up the collection in.
         resource: Optional resource to pass to image loaders.
     """
     tiles = []
@@ -115,7 +109,9 @@ def hcs_images_from_dataframe(
         row_dict = row.to_dict()
         row_dict = _build_default_image_loader(row_dict)
         row_dict = _build_plate_collection(
-            row_dict, plate_name=plate_name, acquisition=acquisition
+            row_dict,
+            plate_name=context.plate_name,
+            acquisition=context.acquisition_index,
         )
 
         tile = BaseTile[ImageInPlate, DefaultImageLoader].model_validate(
@@ -124,19 +120,16 @@ def hcs_images_from_dataframe(
         )
         tiles.append(tile)
 
-    if store is not None:
-        setup_step = SetupCollectionStep(
-            name="ImageInPlate",
-            store=store,
-            ngff_version=context.converter_options.omezarr_options.ngff_version,
-        )
-    else:
-        setup_step = None
+    setup_step = SetupCollectionStep(
+        name="ImageInPlate",
+        store=context.store,
+        ngff_version=context.converter_options.omezarr_options.ngff_version,
+        overwrite_mode=context.overwrite_mode,
+    )
     tiled_images = tiles_preprocessing_pipeline(
         tiles=tiles,
         context=context,
         validators=validators,
-        resource=resource,
         filters=filters,
         setup_collection_step=setup_step,
     )
@@ -148,12 +141,13 @@ def hcs_images_from_csv(
     plate_name: str,
     acquisition: int,
     converter_options: ConverterOptions,
+    store: Store,
     table_name: str = "tiles.csv",
     acquisition_details_name: str = "acquisition_details.toml",
     filters: list[FilterStep] | None = None,
     validators: list[ValidatorStep] | None = None,
-    store: Store | None = None,
-) -> list[TiledImage]:
+    overwrite_mode: OVERWRITE_MODES = "no_overwrite",
+) -> tuple[list[TiledImage], HCSContextModel]:
     """Build tiles for HCS data from a table.
 
     Args:
@@ -161,28 +155,31 @@ def hcs_images_from_csv(
         plate_name: Name of the plate.
         acquisition: Acquisition index.
         converter_options: Converter options.
+        store: Zarr store to set up the collection in.
         table_name: Name of the table file.
         acquisition_details_name: Name of the acquisition details file.
         filters: Optional list of filter steps to apply to the tiles.
         validators: Optional list of validator steps to apply to the tiles.
-        store: Optional Zarr store to set up the collection in.
+        overwrite_mode: Whether to overwrite existing Zarr files.
     """
     df, acquisition_details = _open_hcs_dir(
         acquisition_path=acquisition_path,
         table_name=table_name,
         acquisition_details_name=acquisition_details_name,
     )
-    context = FullContextBaseModel(
+    context = HCSContextModel(
+        store=store,
+        plate_name=plate_name,
+        acquisition_index=acquisition,
         acquisition_details=acquisition_details,
         converter_options=converter_options,
-    )
-    return hcs_images_from_dataframe(
-        tiles_table=df,
-        context=context,
-        plate_name=plate_name,
-        acquisition=acquisition,
-        filters=filters,
-        validators=validators,
-        store=store,
+        overwrite_mode=overwrite_mode,
         resource=acquisition_path,
     )
+    images = hcs_images_from_dataframe(
+        tiles_table=df,
+        context=context,
+        filters=filters,
+        validators=validators,
+    )
+    return images, context

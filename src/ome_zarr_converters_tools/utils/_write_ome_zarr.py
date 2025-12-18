@@ -1,11 +1,14 @@
 from typing import Any
 
 import zarr
-from ngio import PixelSize, RoiSlice, create_empty_ome_zarr
+from ngio import PixelSize, RoiSlice, create_empty_ome_zarr, open_ome_zarr_container
 from ngio.tables import RoiTable
 from ngio.utils._zarr_utils import NgioSupportedStore
 
-from ome_zarr_converters_tools.models._acquisition import OmeZarrOptions
+from ome_zarr_converters_tools.models import ContextModel
+from ome_zarr_converters_tools.models._acquisition import (
+    OmeZarrOptions,
+)
 from ome_zarr_converters_tools.models._tile_region import TiledImage, TileSlice
 
 
@@ -64,39 +67,49 @@ def _region_to_pixel_coordinates(
 def write_tiled_image_as_zarr(
     base_store: NgioSupportedStore,
     tiled_image: TiledImage,
-    resource: Any,
-    ome_zarr_options: OmeZarrOptions,
-    overwrite: bool = True,
+    context: ContextModel,
 ) -> dict[str, Any]:
     """Write a TiledImage as a Zarr file.
 
     Args:
         base_store: Base store to write the Zarr file to.
         tiled_image: TiledImage model to write.
-        resource: Resource to write the Zarr file to.
-        ome_zarr_options: OmeZarrOptions model to use for writing.
-        overwrite: Whether to overwrite existing Zarr files.
+        context: ContextModel containing writing options.
     """
     tiled_image.regions = _region_to_pixel_coordinates(
         tiled_image.regions,
         tiled_image.pixel_size,
     )
-    mode = "w" if overwrite else "w-"
+    overwrite_mode = context.overwrite_mode
+    if overwrite_mode == "no_overwrite":
+        mode = "w-"
+    elif overwrite_mode == "overwrite":
+        mode = "w"
+    else:  # extend
+        mode = "a"
     base_group = zarr.open_group(store=base_store, mode=mode, path=tiled_image.path)
-    ome_zarr = create_empty_ome_zarr(
-        store=base_group,
-        axes_names=tiled_image.axes,
-        shape=tiled_image.shape(),
-        chunks=_compute_chunk_size(tiled_image, ome_zarr_options),
-        pixelsize=tiled_image.pixelsize,
-        z_spacing=tiled_image.z_spacing,
-        time_spacing=tiled_image.t_spacing,
-        levels=ome_zarr_options.num_levels,
-        overwrite=overwrite,
-    )
+    try:
+        # This can only succeed in "extend" mode if the group already exists
+        ome_zarr = open_ome_zarr_container(base_group, cache=True)
+        return {}
+    except Exception:
+        ome_zarr = create_empty_ome_zarr(
+            store=base_group,
+            axes_names=tiled_image.axes,
+            shape=tiled_image.shape(),
+            chunks=_compute_chunk_size(
+                tiled_image, context.converter_options.omezarr_options
+            ),
+            pixelsize=tiled_image.pixelsize,
+            z_spacing=tiled_image.z_spacing,
+            time_spacing=tiled_image.t_spacing,
+            levels=context.converter_options.omezarr_options.num_levels,
+            overwrite=True,
+            ngff_version=context.converter_options.omezarr_options.ngff_version,
+        )
     image = ome_zarr.get_image()
     for region in tiled_image.regions:
-        region_data = region.load_data(resource)
+        region_data = region.load_data(context.resource)
         region_data = region_data[None, None, None, ...]
         image.set_roi(roi=region.roi, patch=region_data)
     image.consolidate()

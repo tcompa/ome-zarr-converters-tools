@@ -1,62 +1,75 @@
 """Collection setup functions for OME-Zarr converters tools."""
 
-from warnings import warn
-
 import zarr
 from ngio import DefaultNgffVersion, NgffVersions
-from ngio.hcs import create_empty_plate
+from ngio.hcs import create_empty_plate, open_ome_zarr_plate
 from ngio.hcs._plate import ImageInWellPath
 from zarr.abc.store import Store
 
+from ome_zarr_converters_tools.models._acquisition import (
+    OVERWRITE_MODES,
+)
 from ome_zarr_converters_tools.models._collection import (
     ImageInPlate,
 )
 from ome_zarr_converters_tools.models._tile_region import TiledImage
 
 
-def sanitize_plate_name(plate_name: str) -> str:
-    """Sanitize the plate name to be used as a Zarr group path."""
-    if " " in plate_name or "/" in plate_name:
-        warn(
-            f"Plate name '{plate_name}' contains spaces or slashes, "
-            "which will be replaced with underscores.",
-            UserWarning,
-            stacklevel=2,
-        )
-        plate_name = plate_name.replace(" ", "_").replace("/", "_")
-    # Make sure it ends with .zarr
-    if not plate_name.endswith(".zarr"):
-        plate_name = f"{plate_name}.zarr"
-    return plate_name
-
-
 def setup_plates(
     store: Store,
     tiled_images: list[TiledImage],
     ngff_version: NgffVersions = DefaultNgffVersion,
+    overwrite_mode: OVERWRITE_MODES = "no_overwrite",
 ) -> None:
     """Set up an ImageInPlate collection in the Zarr group."""
     assert isinstance(tiled_images[0].collection, ImageInPlate)
     plates = {}
     for tile in tiled_images:
-        plate_name = tile.collection.plate_name
-        if plate_name not in plates:
-            plates[plate_name] = []
+        plate_path = tile.collection.plate_path()
+        if plate_path not in plates:
+            plates[plate_path] = {"name": tile.collection.plate_name, "images": []}
         image_in_well = ImageInWellPath(
-            row=tile.collection.well_row,
-            column=tile.collection.well_column,
+            row=tile.collection.row,
+            column=tile.collection.column,
             path=tile.collection.path_in_well(),
             acquisition_id=tile.collection.acquisition,
-            acquisition_name=tile.collection.acquisition_name,
+            acquisition_name=str(tile.collection.acquisition),
         )
-        plates[plate_name].append(image_in_well)
-
-    for plate_name, images in plates.items():
-        plate_path = sanitize_plate_name(plate_name)
-        group = zarr.create_group(store, overwrite=True, path=plate_path)
-        create_empty_plate(
-            store=group,
-            name=plate_name,
-            images=images,
-            ngff_version=ngff_version,
+        plates[plate_path]["images"].append(image_in_well)
+    for plate_path, plate_info in plates.items():
+        zarr_format = 2 if ngff_version == "0.4" else 3
+        if overwrite_mode == "no_overwrite":
+            mode = "w-"
+        elif overwrite_mode == "overwrite":
+            mode = "w"
+        else:  # extend
+            mode = "a"
+        group = zarr.open_group(
+            store, mode=mode, path=plate_path, zarr_format=zarr_format
         )
+        try:
+            # This can only succeed in "extend" mode if the group already exists
+            plate = open_ome_zarr_plate(group, cache=True)
+        except Exception:
+            plate = create_empty_plate(
+                store=group,
+                name=plate_info["name"],
+                ngff_version=ngff_version,
+                overwrite=True,
+                cache=True,
+            )
+        existing_image = plate.images_paths()
+        for image in plate_info["images"]:
+            image_path = f"{image.row}/{image.column}/{image.path}"
+            if image_path in existing_image:
+                # Image already exists in the plate, skip adding
+                # This can only happen in 'extend' mode
+                # othe other modes would have overwritten or raised an error
+                continue
+            plate.add_image(
+                row=image.row,
+                column=image.column,
+                image_path=image.path,
+                acquisition_id=image.acquisition_id,
+                acquisition_name=image.acquisition_name,
+            )

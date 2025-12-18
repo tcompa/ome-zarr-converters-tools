@@ -1,6 +1,7 @@
 """Models for defining regions to be converted into OME-Zarr format."""
 
 from typing import Any, TypeVar
+from warnings import warn
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -25,6 +26,24 @@ class SingleImage(CollectionInterface):
         return f"{self.image_path}{self.suffix}"
 
 
+def sanitize_plate_name(plate_name: str) -> str:
+    """Sanitize the plate name to be used as a Zarr group path."""
+    characters_to_replace = [" ", "/"]
+    for char in characters_to_replace:
+        if char in plate_name:
+            warn(
+                f"Plate name '{plate_name}' contains '{char}', "
+                "which will be replaced with underscores.",
+                UserWarning,
+                stacklevel=2,
+            )
+        plate_name = plate_name.replace(char, "_")
+    # Make sure it ends with .zarr
+    if not plate_name.endswith(".zarr"):
+        plate_name = f"{plate_name}.zarr"
+    return plate_name
+
+
 class ImageInPlate(CollectionInterface):
     plate_name: str
     row: str
@@ -36,11 +55,17 @@ class ImageInPlate(CollectionInterface):
     def well(self) -> str:
         return f"{self.row}{self.column}"
 
+    def plate_path(self) -> str:
+        return sanitize_plate_name(self.plate_name)
+
+    def well_path(self) -> str:
+        return f"{self.plate_path()}/{self.row}/{self.column}"
+
     def path_in_well(self) -> str:
         return f"{self.acquisition}{self.suffix}"
 
     def path(self) -> str:
-        return f"{self.row}/{self.column}/{self.path_in_well()}"
+        return f"{self.well_path()}/{self.path_in_well()}"
 
     @classmethod
     @field_validator("row", mode="before")

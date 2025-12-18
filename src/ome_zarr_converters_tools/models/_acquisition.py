@@ -1,15 +1,15 @@
 """Models for defining regions to be converted into OME-Zarr format."""
 
-from typing import Literal
+from typing import Any, Literal
 
 from ngio import DefaultNgffVersion, NgffVersions
-from ngio.tables import TableBackend
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
     field_validator,
 )
+from zarr.abc.store import Store
 
 CANONICAL_AXES_TYPE = Literal["t", "c", "z", "y", "x"]
 canonical_axes: list[CANONICAL_AXES_TYPE] = ["t", "c", "z", "y", "x"]
@@ -19,6 +19,7 @@ TILING_MODES = Literal[
     "auto", "snap_to_grid", "snap_to_corners", "inplace", "no_tiling"
 ]
 TABLE_BACKENDS = Literal["anndata", "json", "csv", "parquet"]
+OVERWRITE_MODES = Literal["no_overwrite", "overwrite", "extend"]
 
 
 class AcquisitionDetails(BaseModel):
@@ -86,7 +87,7 @@ class OmeZarrOptions(BaseModel):
     c_chunk: int = Field(default=1, ge=1)
     t_chunk: int = Field(default=1, ge=1)
     ngff_version: NgffVersions = DefaultNgffVersion
-    table_backend: TableBackend = "anndata"
+    table_backend: TABLE_BACKENDS = "anndata"
     model_config = ConfigDict(extra="forbid")
 
 
@@ -100,9 +101,28 @@ class ConverterOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class FullContextBaseModel(BaseModel):
-    """Base model for context information during conversion."""
+class ContextModel(BaseModel):
+    """Base model for context information during conversion.
 
+    This models holds the all context information needed during the conversion
+    process, including acquisition details and converter options.
+    """
+
+    store: Store
     acquisition_details: AcquisitionDetails
     converter_options: ConverterOptions
+    overwrite_mode: OVERWRITE_MODES = "no_overwrite"
+    resource: Any | None = None
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+
+
+class HCSContextModel(ContextModel):
+    """Context model for HCS data during conversion.
+
+    This model extends the base ContextModel to include HCS-specific
+    information such as plate names and acquisition indices.
+    """
+
+    plate_name: str
+    acquisition_index: int = Field(ge=0)
     model_config = ConfigDict(extra="forbid")

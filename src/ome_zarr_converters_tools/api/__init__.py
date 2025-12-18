@@ -14,6 +14,6 @@ from ome_zarr_converters_tools.api.tiles_preprocessing_pipeline import (
 __all__ = [
     "hcs_images_from_csv",
     "hcs_images_from_dataframe",
-    "tiles_preprocessing_pipeline",
     "tiled_image_creation_pipeline",
+    "tiles_preprocessing_pipeline",
 ]
