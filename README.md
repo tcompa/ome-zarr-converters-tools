@@ -8,10 +8,15 @@
 
 OME-Zarr Converters Tools is a Python package that provides tooling for building OME-Zarr converters for the Fractal platform.
 
-It includes three main components:
+## Features
 
-1. Abstraction layer for mapping the on-disk raw data to an Image object
-2. Common tooling to build converters as Fractal Compound Tasks
+1. Abstraction layer for building OME-Zarr Image/HCS plates from the microscope metadata and image data 
+2. A fully customizable pipeline for filtering, validanting, and tiling images
+3. Python API for building custom converters, and fractal utilities for building converters tasks in fractal.
+
+### Converters Tools Diagram
+
+![alt text](docs/ome-zarr-converter-tools.png)
 
 ## Getting Started
 
