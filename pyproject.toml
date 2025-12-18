@@ -10,8 +10,28 @@ source = "vcs"
 # read more about configuring hatch at:
 # https://hatch.pypa.io/latest/config/build/
 [tool.hatch.build.targets.wheel]
-only-include = ["src"]
-sources = ["src"]
+packages = ["src/ome_zarr_converters_tools/"]
+
+# Clean up the source distribution to avoid big tag.gz files
+[tool.hatch.build.targets.sdist]
+exclude = [
+    # Pixi lock excluded by default see https://github.com/fractal-analytics-platform/fractal-server/issues/2624
+    "pixi.lock",
+    # Exclude tests from the source distribution
+    "tests",
+    # Exclude typically large files and directories that are not needed
+    # This might not exists or be named differently in your project
+    # TBD if we want to include these or not
+    "docs/*",
+    "data",
+    "examples",
+    "notebooks",
+    ".github",
+    # Remove all jupyter notebook and checkpoints
+    "**/*.ipynb_checkpoints",
+    "**/*.ipynb",
+    # NB all things in .gitignore are excluded by default of hatchling
+]
 
 # https://peps.python.org/pep-0621/
 [project]
@@ -33,7 +53,16 @@ classifiers = [
     "Typing :: Typed",
 ]
 # add your package dependencies here
-dependencies = ["ngio>=0.4.2", "tqdm", "numpy", "zarr", "pillow"]
+dependencies = [
+    # "ngio==0.5.0b1",
+    "tqdm",
+    "numpy",
+    "pillow",
+    "tifffile",
+    "toml",
+    "check-manifest>=0.51,<0.52",
+    # "anndata>=0.12.6",
+]
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 # "extras" (e.g. for `pip install .[test]`)
@@ -42,6 +71,7 @@ dependencies = ["ngio>=0.4.2", "tqdm", "numpy", "zarr", "pillow"]
 test = ["pytest", "pytest-cov", "devtools"]
 # add anything else you like to have in your dev environment here
 dev = [
+    "plotly",
     "notebook",
     "matplotlib",
     "ipython",
@@ -174,12 +204,13 @@ source = ["ome_zarr_converters_tools"]
 [tool.check-manifest]
 ignore = [".pre-commit-config.yaml", ".ruff_cache/**/*", "tests/**/*"]
 
-[tool.pixi.project]
+[tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "linux-64"]
 
 [tool.pixi.pypi-dependencies]
 ome-zarr-converters-tools = { path = ".", editable = true }
+ngio = { path = "../ngio/", editable = true }
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
