@@ -6,21 +6,22 @@
 [![CI](https://github.com/BioVisionCenter/ome-zarr-converters-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/BioVisionCenter/ome-zarr-converters-tools/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/BioVisionCenter/ome-zarr-converters-tools/branch/main/graph/badge.svg)](https://codecov.io/gh/BioVisionCenter/ome-zarr-converters-tools)
 
-OME-Zarr Converters Tools is a Python package that provides tooling for building OME-Zarr converters for the Fractal platform.
+A Python library that provides shared utilities for building OME-Zarr image converters. It handles tile management, image registration, filtering, validation, and writing OME-Zarr datasets.
 
 ## Features
 
-1. Abstraction layer for building OME-Zarr Image/HCS plates from the microscope metadata and image data 
-2. A fully customizable pipeline for filtering, validanting, and tiling images
-3. Python API for building custom converters, and fractal utilities for building converters tasks in fractal.
+1. **Abstraction layer** for building OME-Zarr images and HCS plates from microscope metadata and image data
+2. **Customizable pipeline** for filtering, validating, registering, and tiling images
+3. **Python API** for building custom converters, with optional [Fractal](https://fractal-analytics-platform.github.io/fractal-server/) integration for parallel processing
+4. **Flexible input**: parse tiles from DataFrames or construct them programmatically
 
-### Converters Tools Diagram
+### Architecture Diagram
 
-![alt text](docs/ome-zarr-converter-tools.png)
+![OME-Zarr Converters Tools Architecture](docs/ome-zarr-converter-tools.png)
 
 ## Getting Started
 
-To get started with OME-Zarr Converters Tools, you can install it via pip:
+Install via pip:
 
 ```bash
 pip install ome-zarr-converters-tools
@@ -28,6 +29,13 @@ pip install ome-zarr-converters-tools
 
 ## Documentation
 
-For detailed documentation on how to use OME-Zarr Converters Tools, please refer to the [official documentation](https://BioVisionCenter.github.io/ome-zarr-converters-tools/).
+For detailed documentation, tutorials, and API reference, visit the [official documentation](https://BioVisionCenter.github.io/ome-zarr-converters-tools/).
 
-We also provide a minimal step-by-step guide to how to create a converter. You can find it in the [tutorial](https://BioVisionCenter.github.io/ome-zarr-converters-tools/stable/tutorial/) section of the documentation.
+The documentation includes:
+
+- [HCS Plate Tutorial](https://BioVisionCenter.github.io/ome-zarr-converters-tools/stable/hcs_tutorial/) -- converting plate-based microscopy data
+- [Single Images Tutorial](https://BioVisionCenter.github.io/ome-zarr-converters-tools/stable/images_tutorial/) -- converting standalone images
+- [Advanced Tutorial](https://BioVisionCenter.github.io/ome-zarr-converters-tools/stable/advanced_tutorial/) -- programmatic tile construction with custom loaders
+- [Fractal Tasks Guide](https://BioVisionCenter.github.io/ome-zarr-converters-tools/stable/converters_as_fractal_tasks/) -- building parallel converters with the Fractal platform
+- [Pipeline Configuration](https://BioVisionCenter.github.io/ome-zarr-converters-tools/stable/pipeline/) -- filters, registration, tiling, and writer modes
+- [API Reference](https://BioVisionCenter.github.io/ome-zarr-converters-tools/stable/api/)

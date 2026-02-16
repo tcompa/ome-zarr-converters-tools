@@ -39,7 +39,7 @@ name = "ome-zarr-converters-tools"
 dynamic = ["version"]
 description = "Tooling to build ome-zarr HCS plate converters"
 readme = "README.md"
-requires-python = ">=3.11, <3.14"
+requires-python = ">=3.11, <3.15"
 license = { text = "BSD-3-Clause" }
 authors = [{ name = "Lorenzo Cerrone", email = "lorenzo.cerrone@uzh.ch" }]
 # https://pypi.org/classifiers/
@@ -50,18 +50,17 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
 # add your package dependencies here
 dependencies = [
-    # "ngio==0.5.0b1",
+    "ngio>=0.5.3,<0.6.0",
     "tqdm",
     "numpy",
     "pillow",
     "tifffile",
     "toml",
-    "check-manifest>=0.51,<0.52",
-    # "anndata>=0.12.6",
 ]
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
@@ -71,14 +70,16 @@ dependencies = [
 test = ["pytest", "pytest-cov", "devtools"]
 # add anything else you like to have in your dev environment here
 dev = [
+    "ipycytoscape",               #
+    "check-manifest>=0.51,<0.52",
     "plotly",
     "notebook",
     "matplotlib",
     "ipython",
     "mypy",
-    "pdbpp",      # https://github.com/pdbpp/pdbpp
+    "pdbpp",                      # https://github.com/pdbpp/pdbpp
     "pre-commit",
-    "rich",       # https://github.com/Textualize/rich
+    "rich",                       # https://github.com/Textualize/rich
     "ruff",
 ]
 
@@ -166,20 +167,19 @@ pretty = true
 [tool.pytest.ini_options]
 minversion = "7.0"
 testpaths = ["tests"]
-# The filterwarnings option 
-# caused some unexpected behavior in the tests
-# so it was commented out
-#filterwarnings = [
-#    "error",
-#    "ignore::FutureWarning",
-#    "ignore::DeprecationWarning",
-#]
+filterwarnings = [
+    "ignore:Writing zarr v2 data will no longer be the default:UserWarning",
+]
 addopts = [
     "-vv",
     "--color=yes",
     "--cov",
     "--cov-report=term-missing",
     "--cov-report=xml",
+]
+markers = [
+    "slow: tests that take significant time to run",
+    "integration: integration tests requiring I/O or external resources",
 ]
 
 # https://coverage.readthedocs.io/
@@ -210,7 +210,6 @@ platforms = ["osx-arm64", "linux-64"]
 
 [tool.pixi.pypi-dependencies]
 ome-zarr-converters-tools = { path = ".", editable = true }
-ngio = { path = "../ngio/", editable = true }
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
