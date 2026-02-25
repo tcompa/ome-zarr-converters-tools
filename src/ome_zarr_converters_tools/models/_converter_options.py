@@ -71,24 +71,31 @@ class AlignmentCorrections(BaseModel):
 
 
 class FovBasedChunking(BaseModel):
-    """Chunking strategy that matches the field of view.
-
-    Attributes:
-        mode: Chunking based on FOV size.
-        xy_scaling: Scaling factor for XY chunk size. If set to 1, chunk size matches
-            FOV size. If set to 0.5, chunk size is half the FOV size
-            (smaller chunks, more files). If set to 2, chunk size is double the FOV
-            size (larger chunks, less files).
-        z_chunk: Chunk size for Z dimension.
-        c_chunk: Chunk size for C dimension.
-        t_chunk: Chunk size for T dimension.
-    """
+    """Chunking strategy that matches the field of view."""
 
     mode: Literal["Same as FOV"] = "Same as FOV"
+    """
+    Chunking based on FOV size.
+    """
     xy_scaling: Scalings = Field(default=Scalings.ONE, title="XY Scaling Factor")
+    """
+    Scaling factor for XY chunk size. If set to 1, chunk size matches
+    FOV size. If set to 0.5, chunk size is half the FOV size
+    (smaller chunks, more files). If set to 2, chunk size is double the FOV
+    size (larger chunks, less files).
+    """
     z_chunk: int = Field(default=10, ge=1, title="Chunk Size for Z")
+    """
+    Chunk size for Z dimension.
+    """
     c_chunk: int = Field(default=1, ge=1, title="Chunk Size for C")
+    """
+    Chunk size for C dimension.
+    """
     t_chunk: int = Field(default=1, ge=1, title="Chunk Size for T")
+    """
+    Chunk size for T dimension.
+    """
 
     def get_xy_chunk(self, fov_xy_shape: int) -> int:
         scaling_factor = self.xy_scaling.to_float()
@@ -97,21 +104,28 @@ class FovBasedChunking(BaseModel):
 
 
 class FixedSizeChunking(BaseModel):
-    """Chunking strategy with fixed chunk sizes.
-
-    Attributes:
-        mode: Fixed size chunking.
-        xy_chunk: Chunk size for XY dimensions.
-        z_chunk: Chunk size for Z dimension.
-        c_chunk: Chunk size for C dimension.
-        t_chunk: Chunk size for T dimension.
-    """
+    """Chunking strategy with fixed chunk sizes."""
 
     mode: Literal["Fixed Size"] = "Fixed Size"
+    """
+    mode: Fixed size chunking.
+    """
     xy_chunk: int = Field(default=4096, ge=1, title="Chunk Size for XY")
+    """
+    xy_chunk: Chunk size for XY dimensions.
+    """
     z_chunk: int = Field(default=10, ge=1, title="Chunk Size for Z")
+    """
+    z_chunk: Chunk size for Z dimension.
+    """
     c_chunk: int = Field(default=1, ge=1, title="Chunk Size for C")
+    """
+    c_chunk: Chunk size for C dimension.
+    """
     t_chunk: int = Field(default=1, ge=1, title="Chunk Size for T")
+    """
+    t_chunk: Chunk size for T dimension.
+    """
 
     def get_xy_chunk(self, fov_shape: int) -> int:
         return self.xy_chunk
