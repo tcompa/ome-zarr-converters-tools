@@ -173,49 +173,48 @@ class TempJsonOptions(BaseModel):
 
 
 class ConverterOptions(BaseModel):
-    """Options for the OME-Zarr conversion process.
-
-    Attributes:
-        tiling_mode: Tiling mode to use during conversion.
-            - Auto: Automatically determine if Snap to Grid is possible,
-            otherwise use Snap to Corners.
-            - Snap to Grid: Tile images to fit a regular grid. This is
-            only possible if image positions align to a grid (potentially with overlap).
-            - Snap to Corners: Tile images to fit a grid defined by the corner
-            positions.
-            - Inplace: Write tiles in their original positions without tiling. This
-            may lead to artifacts if microscope stage positions are not precise.
-            - No Tiling: Each field of view is written as a single OME-Zarr.
-        writer_mode: Mode for writing data during conversion.
-            - By Tile: Write data one tile at a time. This consumes less memory,
-            but may be slower.
-            - By Tile (Using Dask): Write tiles in parallel using Dask. This is
-            usually faster than writing by tile sequentially, but may consume more
-            memory.
-            - By FOV: Write data one field of view at a time. This may the best
-            compromise between speed and memory usage in most cases.
-            - By FOV (Using Dask): Write fields of view in parallel using Dask.
-            This is usually faster than writing by FOV sequentially,
-            but may consume more memory.
-            - In Memory: Load all data into memory before writing.
-        alignment_correction: Alignment correction options.
-        omezarr_options: Options specific to OME-Zarr writing.
-        temp_json_options: Options for temporary JSON storage.
-
-    """
+    """Options for the OME-Zarr conversion process."""
 
     tiling_mode: TilingMode = Field(default=TilingMode.AUTO, title="Tiling Mode")
+    """Tiling mode to use during conversion.
+        - Auto: Automatically determine if Snap to Grid is possible,
+        otherwise use Snap to Corners.
+        - Snap to Grid: Tile images to fit a regular grid. This is
+        only possible if image positions align to a grid (potentially with overlap).
+        - Snap to Corners: Tile images to fit a grid defined by the corner
+        positions.
+        - Inplace: Write tiles in their original positions without tiling. This
+        may lead to artifacts if microscope stage positions are not precise.
+        - No Tiling: Each field of view is written as a single OME-Zarr."""
+
     writer_mode: WriterMode = Field(default=WriterMode.BY_FOV, title="Writer Mode")
+    """Mode for writing data during conversion.
+        - By Tile: Write data one tile at a time. This consumes less memory,
+        but may be slower.
+        - By Tile (Using Dask): Write tiles in parallel using Dask. This is
+        usually faster than writing by tile sequentially, but may consume more
+        memory.
+        - By FOV: Write data one field of view at a time. This may the best
+        compromise between speed and memory usage in most cases.
+        - By FOV (Using Dask): Write fields of view in parallel using Dask.
+        This is usually faster than writing by FOV sequentially,
+        but may consume more memory.
+        - In Memory: Load all data into memory before writing."""
+
     alignment_correction: AlignmentCorrections = Field(
         default_factory=AlignmentCorrections,
         title="Alignment Corrections",
     )
+    """Alignment correction options."""
     omezarr_options: OmeZarrOptions = Field(
         default_factory=OmeZarrOptions, title="OME-Zarr Options"
     )
+    """Options specific to OME-Zarr writing."""
     temp_json_options: TempJsonOptions = Field(
         default_factory=TempJsonOptions, title="Temporary JSON Options"
     )
+    """Options for temporary JSON storage."""
+
     model_config = ConfigDict(extra="forbid")
 
 
