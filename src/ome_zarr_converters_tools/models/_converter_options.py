@@ -50,23 +50,25 @@ class WriterMode(StrEnum):
 
 
 class AlignmentCorrections(BaseModel):
-    """Alignment correction for stage positions.
-
-    Attributes:
-        align_xy: Whether to align the positions in the XY plane by FOV.
-            This addresses minor imprecision that often occurs during
-            image acquisition.
-        align_z: Whether to align the positions in the Z axis by FOV.
-            This addresses minor imprecision that often occurs during
-            image acquisition.
-        align_t: Whether to align the positions in the T axis by FOV.
-            This addresses minor imprecision that often occurs during
-            image acquisition.
-    """
-
+    """Alignment correction for stage positions."""
     align_xy: bool = Field(default=False, title="Align XY")
+    """
+    Whether to align the positions in the XY plane by FOV.
+    This addresses minor imprecision that often occurs during
+    image acquisition.
+    """
     align_z: bool = Field(default=False, title="Align Z")
+    """
+    Whether to align the positions in the Z axis by FOV.
+    This addresses minor imprecision that often occurs during
+    image acquisition.
+    """
     align_t: bool = Field(default=False, title="Align T")
+    """
+    Whether to align the positions in the T axis by FOV.
+    This addresses minor imprecision that often occurs during
+    image acquisition.
+    """
     model_config = ConfigDict(extra="forbid")
 
 
